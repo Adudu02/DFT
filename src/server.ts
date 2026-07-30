@@ -10,12 +10,14 @@ import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { openDb, defaultDbPath } from "./lib/db.js";
 import { ingestAll } from "./ingest.js";
+import { rootsFromConfig } from "./adapters/registry.js";
 import { loadPricing, savePricing, type Pricing } from "./lib/pricing.js";
 import { getSummary } from "./lib/summary.js";
 import { loadConfig, saveConfig, type Config } from "./lib/config.js";
 import { discoverCatalog, getSkills } from "./lib/skills.js";
 import { scanMemory } from "./lib/memory.js";
 import { getActivity, getSessionDetail } from "./lib/activity.js";
+import { getWaste } from "./lib/waste.js";
 import { writeReport } from "./lib/report.js";
 
 const HOST = "127.0.0.1";
@@ -44,6 +46,8 @@ export async function buildServer() {
 
   app.get("/api/activity", async () => getActivity(db));
 
+  app.get("/api/waste", async () => getWaste(db, pricing, config.waste));
+
   app.get("/api/session/:id", async (req, reply) => {
     const { id } = req.params as { id: string };
     const detail = getSessionDetail(db, id);
@@ -71,7 +75,9 @@ export async function buildServer() {
     }
   });
 
-  app.post("/api/rebuild", async () => ingestAll(db, { pricing }));
+  app.post("/api/rebuild", async () =>
+    ingestAll(db, { pricing, staleDays: config.staleDays, ...rootsFromConfig(config.agentPaths) }),
+  );
 
   const here = dirname(fileURLToPath(import.meta.url));
   const dist = join(here, "..", "web", "dist");
@@ -88,7 +94,11 @@ async function main() {
 
   // Ingesta incremental al arrancar (fuentes read-only).
   const t0 = Date.now();
-  const summary = await ingestAll(db, { pricing, staleDays: config.staleDays });
+  const summary = await ingestAll(db, {
+    pricing,
+    staleDays: config.staleDays,
+    ...rootsFromConfig(config.agentPaths),
+  });
   await writeReport(summary, { durationMs: Date.now() - t0 });
   console.log(
     `Ingesta: ${summary.files} archivos · ${summary.filesChanged} cambiados · ${summary.eventsInserted} eventos nuevos · ${summary.memories} memorias` +

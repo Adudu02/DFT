@@ -29,6 +29,13 @@ export interface ModelShare {
   share: number; // fracción del costo total de la ventana
 }
 
+export interface AgentShare {
+  agent: string;
+  costUsd: number;
+  tokens: number;
+  share: number; // fracción de tokens de la ventana (no de costo: Codex puede ir sin tarifa)
+}
+
 export interface Summary {
   from?: string;
   to?: string;
@@ -37,6 +44,7 @@ export interface Summary {
   totalTokens: number;
   daily: DailyPoint[];
   perModel: ModelShare[];
+  perAgent: AgentShare[];
   activity: { turns: number; projects: number; deltaPct7d: number | null };
   streakDays: number;
   unknownModels: string[];
@@ -54,6 +62,7 @@ function emptySummary(windowDays: number): Summary {
     totalTokens: 0,
     daily: [],
     perModel: [],
+    perAgent: [],
     activity: { turns: 0, projects: 0, deltaPct7d: null },
     streakDays: 0,
     unknownModels: [],
@@ -104,6 +113,22 @@ export function getSummary(
     0,
   );
 
+  // Participación por agente (claude-code, codex, …). Share por TOKENS, no por
+  // costo: un agente sin tarifa (p.ej. gpt-*) tiene costo 0 pero sí gasta tokens.
+  const perAgentRows = db
+    .prepare(
+      `SELECT s.agent AS agent,
+              SUM(u.cost_usd) AS costUsd,
+              SUM(u.input_tokens + u.output_tokens + u.cache_write_tokens + u.cache_read_tokens) AS tokens
+       FROM usage_events u JOIN sessions s ON s.id = u.session_id
+       WHERE u.day BETWEEN ? AND ? GROUP BY s.agent ORDER BY tokens DESC`,
+    )
+    .all(from, to) as { agent: string; costUsd: number; tokens: number }[];
+  const perAgent: AgentShare[] = perAgentRows.map((a) => ({
+    ...a,
+    share: totalTokens > 0 ? a.tokens / totalTokens : 0,
+  }));
+
   const turns = (
     db
       .prepare("SELECT COUNT(*) AS n FROM usage_events WHERE day BETWEEN ? AND ?")
@@ -145,6 +170,7 @@ export function getSummary(
     totalTokens,
     daily,
     perModel,
+    perAgent,
     activity: { turns, projects, deltaPct7d },
     streakDays,
     unknownModels,

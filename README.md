@@ -1,12 +1,35 @@
-# Motor Agéntico
+# Motor Agéntico · v1.0.0
 
 Dashboard local de costos/actividad de agentes. Lee transcripts de Claude Code
-(`~/.claude/projects`) en **solo lectura** y calcula el gasto "equivalente API".
+(`~/.claude/projects`) y Codex (`~/.codex`) en **solo lectura** y calcula el gasto
+"equivalente API", además de señalar fugas de tokens y cómo reducirlas.
 
 ## Principio
 
-`~/.claude` y otras fuentes = **SOLO LECTURA** (se abren con flag `'r'`, ver
-`src/lib/fs-readonly.ts`). Todo estado propio (DB, reportes) vive en `./data/`.
+`~/.claude`, `~/.codex` y otras fuentes = **SOLO LECTURA** (se abren con flag
+`'r'`, ver `src/lib/fs-readonly.ts`). Todo estado propio (DB, reportes) vive en
+`./data/`.
+
+## Conectar agentes (local)
+
+Solo lectura, sin login ni claves. Al arrancar detecta automáticamente Claude Code
+(`~/.claude/projects`) y Codex (`~/.codex/sessions` + `archived_sessions`). Para
+rutas distintas: **Configuración → Rutas de agentes** (acepta `~/`, claves
+`claude-code` / `codex` en `data/config.json → agentPaths`) y luego **Rebuild**.
+Ver la página **Ayuda** en la UI.
+
+## Seguridad
+
+- **No usa claves API.** Calcula costo *equivalente API* desde conteos de tokens
+  locales; nunca pide, recibe ni almacena credenciales.
+- **Fuentes intactas.** Todo con flag `'r'`; `test/integrity.test.ts` hashea el
+  árbol de fuentes antes/después de ingerir y exige que no cambie.
+- **Lista blanca de lectura.** Solo `rollout-*.jsonl`, `*.jsonl` y memoria `*.md`.
+  Nunca abre `~/.codex/auth.json`, `.env` ni archivos de credenciales.
+- **Solo métricas.** `./data/motor.db` guarda conteos de tokens, modelo y nombres
+  de skills — no el texto de tus prompts.
+- **Sin red.** El servidor bindea solo a `127.0.0.1:8081`, sin auth. No exponerlo
+  a la LAN ni detrás de un proxy público.
 
 ## Comandos
 
@@ -50,12 +73,37 @@ npm run typecheck  # tsc --noEmit
   fuentes) para corregir parsers/heurísticas y añadir tests; `--dry` solo imprime
   el prompt.
 
-Pendiente: F5 adapters Codex/Hermes.
+- **F-waste** — página Ahorro. A diferencia del resto del dashboard (que MIDE el
+  gasto), señala DÓNDE se fugan tokens y qué hacer (objetivo: gastar menos).
+  `getWaste` (`src/lib/waste.ts`) lee la DB y produce hallazgos rankeados:
+  *cache-miss* (UC1 — sesión con baja tasa de acierto de caché; el contexto se
+  reenvía como `input` a 1× en vez de leerse a 0.10×; ahorro estimado = ese input
+  a la diferencia de tarifa), *session-bloat* (UC3 — sesión enorme por turnos o
+  tokens; informativo, recomienda partir) y *model-mismatch* (UC2 — modelo caro en
+  turnos triviales; ahorro = costo real − costo a la tarifa del modelo destino).
+  Umbrales en `data/config.json → waste`. CLI: `npm run cli -- --waste`.
+  *Tendencia (UC5)*: `trend` en `/api/waste` atribuye el ahorro estimado al día de
+  cada sesión — derivado del estado actual, SIN snapshots (las sesiones viejas caen
+  en su día, así se ve si el desperdicio baja con el tiempo). Gráfico en la página
+  Ahorro.
+
+- **F5** — adapter Codex + registro de adapters. `src/adapters/codex.ts` lee los
+  rollouts JSONL de `~/.codex/sessions/**` y `~/.codex/archived_sessions/` (SOLO
+  LECTURA): un `UsageEvent` por evento `token_count` (`last_token_usage`; input =
+  `input_tokens − cached_input_tokens`, cacheRead = cached), modelo del
+  `turn_context`, sesión/proyecto del `session_meta` (cwd). `src/adapters/registry.ts`
+  itera todos los adapters en la ingesta; `sessions.agent` distingue el origen.
+  Tarifas OpenAI (`gpt-5.5`, `gpt-5.6-sol/terra/luna`) ya en `pricing.json`
+  (verificadas 2026-07); cached-input = 10% del input, que el motor ya modela.
+  Un modelo nuevo sin tarifa sigue mostrando costo 0 + badge — nunca se estima
+  en silencio.
+
+Pendiente: F5 adapter para más agentes si aparecen fuentes con transcript propio.
 
 ## API
 
 `GET /api/summary` · `GET /api/skills` · `GET /api/memory` · `GET /api/activity` ·
-`GET /api/session/:id` · `GET|PUT /api/config` · `GET|PUT /api/pricing` ·
+`GET /api/waste` · `GET /api/session/:id` · `GET|PUT /api/config` · `GET|PUT /api/pricing` ·
 `POST /api/rebuild` · `GET /api/health`. Editar pricing → correr `rebuild` para
 recalcular costos ya materializados.
 
