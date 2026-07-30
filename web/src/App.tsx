@@ -21,6 +21,12 @@ interface ModelShare {
   known: boolean;
   share: number;
 }
+interface AgentShare {
+  agent: string;
+  costUsd: number;
+  tokens: number;
+  share: number;
+}
 interface Summary {
   from?: string;
   to?: string;
@@ -29,6 +35,7 @@ interface Summary {
   totalTokens: number;
   daily: { day: string; costUsd: number; input: number; output: number }[];
   perModel: ModelShare[];
+  perAgent: AgentShare[];
   activity: { turns: number; projects: number; deltaPct7d: number | null };
   streakDays: number;
   unknownModels: string[];
@@ -80,12 +87,45 @@ interface SessionDetail {
   totalCostUsd: number;
   models: { model: string; input: number; output: number; cacheWrite: number; cacheRead: number; costUsd: number }[];
 }
+interface WasteThresholds {
+  minCacheRatio: number;
+  minInputTokens: number;
+  bloatTurns: number;
+  bloatTokens: number;
+  expensiveInputRate: number;
+  trivialOutputTokens: number;
+  mismatchMinTurns: number;
+  downgradeModel: string;
+}
 interface Config {
   hourlyRate: number;
   staleDays: number;
   minutesPerUseDefault: number;
   minutesPerUse: Record<string, number>;
   agentPaths: Record<string, string>;
+  waste: WasteThresholds;
+}
+interface WasteFinding {
+  kind: "cache-miss" | "session-bloat" | "model-mismatch";
+  sessionId: string;
+  project: string;
+  title: string;
+  detail: string;
+  estUsd?: number;
+  estTokens?: number;
+  metrics: { input: number; output: number; cacheWrite: number; cacheRead: number; turns: number; cacheHitRatio: number };
+}
+interface WasteTrendPoint {
+  day: string;
+  estUsd: number;
+  findings: number;
+}
+interface WasteReport {
+  findings: WasteFinding[];
+  totalEstUsd: number;
+  totalEstTokens: number;
+  trend: WasteTrendPoint[];
+  thresholds: WasteThresholds;
 }
 
 // ─────────────────────────── helpers ───────────────────────────
@@ -232,6 +272,24 @@ function Inicio() {
         ) : (
           <Empty />
         )}
+      </Panel>
+
+      <Panel title="Participación por agente" className="md:col-span-3">
+        <div className="grid gap-2">
+          {s.perAgent.map((a, i) => (
+            <div key={a.agent} className="flex items-center gap-2 text-sm">
+              <span className="w-2 h-2 rounded-full" style={{ background: AMBER[i % AMBER.length] }} />
+              <span className="w-28 truncate">{a.agent}</span>
+              <div className="flex-1 bg-term-bg rounded h-3 overflow-hidden">
+                <div className="h-full bg-term-amber" style={{ width: `${a.share * 100}%` }} />
+              </div>
+              <span className="text-term-muted w-12 text-right">{pct(a.share)}</span>
+              <span className="w-20 text-right">{compact(a.tokens)} tok</span>
+              <span className="w-20 text-right text-term-amber">{a.costUsd > 0 ? usd(a.costUsd) : "—"}</span>
+            </div>
+          ))}
+          {s.perAgent.length === 0 && <Empty />}
+        </div>
       </Panel>
     </div>
   );
@@ -441,6 +499,63 @@ function SessionDrill({ id }: { id: string }) {
   );
 }
 
+// ─────────────────────────── Ahorro ───────────────────────────
+// El resto del dashboard MIDE el gasto; esta página señala DÓNDE se fuga y qué
+// hacer (objetivo del usuario: gastar menos). Umbrales en Configuración → waste.
+const WASTE_TAG: Record<WasteFinding["kind"], string> = {
+  "cache-miss": "CACHE",
+  "session-bloat": "BLOAT",
+  "model-mismatch": "MODEL",
+};
+
+function Ahorro() {
+  const { data, error } = useApi<WasteReport>("/api/waste");
+  if (error) return <ErrorMsg msg={error} />;
+  if (!data) return <Loading />;
+  return (
+    <div className="grid gap-4">
+      <Panel>
+        <div className="text-term-muted text-xs uppercase tracking-widest mb-1">Ahorro estimado detectado</div>
+        <div className="text-4xl font-bold text-term-green">{usd(data.totalEstUsd)}</div>
+        <div className="text-xs text-term-muted mt-1">
+          {data.findings.length} fugas · {compact(data.totalEstTokens)} tokens señalados · equiv-API a tarifa medida
+        </div>
+        {data.trend.length > 1 && (
+          <div className="h-24 mt-3">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={data.trend.map((p) => ({ day: p.day.slice(5), v: p.estUsd }))} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                <XAxis dataKey="day" tick={{ fill: "#8a7a55", fontSize: 10 }} interval="preserveStartEnd" />
+                <Tooltip
+                  contentStyle={{ background: "#141210", border: "1px solid #3a2f1a", color: "#7dd35f" }}
+                  formatter={(v: number) => usd(v)}
+                />
+                <Line type="monotone" dataKey="v" stroke="#7dd35f" strokeWidth={2} dot={false} isAnimationActive={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        <div className="text-xs text-term-muted mt-1">tendencia: ahorro estimado por día de sesión</div>
+      </Panel>
+      {data.findings.length === 0 && <Empty msg="sin fugas con los umbrales actuales (ajustables en Configuración)" />}
+      {data.findings.map((f) => (
+        <Panel key={f.kind + f.sessionId}>
+          <div className="flex justify-between items-baseline gap-2">
+            <span className={`text-xs px-2 py-0.5 rounded ${f.estUsd != null ? "bg-term-amber text-black" : "bg-term-border text-term-amber"}`}>
+              {WASTE_TAG[f.kind]}
+            </span>
+            <span className="text-term-green font-bold">{f.estUsd != null ? usd(f.estUsd) : "—"}</span>
+          </div>
+          <div className="mt-2 text-term-amber">{f.title}</div>
+          <div className="text-xs text-term-muted mt-1">
+            {f.project}/{f.sessionId.slice(0, 8)} · {f.metrics.turns} turnos · acierto caché {pct(f.metrics.cacheHitRatio)}
+          </div>
+          <div className="text-sm mt-2">{f.detail}</div>
+        </Panel>
+      ))}
+    </div>
+  );
+}
+
 // ─────────────────────────── Configuración ───────────────────────────
 function Configuracion() {
   const [key, setKey] = useState(0);
@@ -480,6 +595,8 @@ function Configuracion() {
   };
   const num = (k: keyof Config) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [k]: Number(e.target.value) });
+  const numW = (k: keyof WasteThresholds) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm({ ...form, waste: { ...form.waste, [k]: Number(e.target.value) } });
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -493,6 +610,56 @@ function Configuracion() {
         <Field label="Minutos por uso (default)">
           <input type="number" value={form.minutesPerUseDefault} onChange={num("minutesPerUseDefault")} className="in" />
         </Field>
+        <div className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Fugas (Ahorro)</div>
+        <Field label="Min. acierto de caché (0–1)">
+          <input type="number" step="0.05" value={form.waste.minCacheRatio} onChange={numW("minCacheRatio")} className="in" />
+        </Field>
+        <Field label="Piso de input para señalar (tokens)">
+          <input type="number" value={form.waste.minInputTokens} onChange={numW("minInputTokens")} className="in" />
+        </Field>
+        <Field label="Turnos para sesión inflada">
+          <input type="number" value={form.waste.bloatTurns} onChange={numW("bloatTurns")} className="in" />
+        </Field>
+        <Field label="Tokens para sesión inflada">
+          <input type="number" value={form.waste.bloatTokens} onChange={numW("bloatTokens")} className="in" />
+        </Field>
+        <Field label="Tarifa input desde la que es «caro»">
+          <input type="number" step="0.5" value={form.waste.expensiveInputRate} onChange={numW("expensiveInputRate")} className="in" />
+        </Field>
+        <Field label="Salida trivial (tokens/turno)">
+          <input type="number" value={form.waste.trivialOutputTokens} onChange={numW("trivialOutputTokens")} className="in" />
+        </Field>
+        <Field label="Min. turnos triviales para señalar">
+          <input type="number" value={form.waste.mismatchMinTurns} onChange={numW("mismatchMinTurns")} className="in" />
+        </Field>
+        <Field label="Modelo destino del downgrade">
+          <input
+            type="text"
+            value={form.waste.downgradeModel}
+            onChange={(e) => setForm({ ...form, waste: { ...form.waste, downgradeModel: e.target.value } })}
+            className="in"
+          />
+        </Field>
+        <div className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Rutas de agentes</div>
+        <Field label="Claude Code (vacío = ~/.claude/projects)">
+          <input
+            type="text"
+            placeholder="~/.claude/projects"
+            value={form.agentPaths["claude-code"] ?? ""}
+            onChange={(e) => setForm({ ...form, agentPaths: { ...form.agentPaths, "claude-code": e.target.value } })}
+            className="in"
+          />
+        </Field>
+        <Field label="Codex (vacío = ~/.codex)">
+          <input
+            type="text"
+            placeholder="~/.codex"
+            value={form.agentPaths["codex"] ?? ""}
+            onChange={(e) => setForm({ ...form, agentPaths: { ...form.agentPaths, codex: e.target.value } })}
+            className="in"
+          />
+        </Field>
+        <div className="text-xs text-term-muted">Tras cambiar rutas, corré Rebuild para reingestar.</div>
         <button onClick={saveConfig} className="btn mt-2">
           Guardar configuración
         </button>
@@ -529,6 +696,82 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+// ─────────────────────────── Ayuda ───────────────────────────
+function Ayuda() {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      <Panel title="Conectar tus agentes (local)">
+        <p className="text-sm text-term-muted mb-3">
+          El dashboard <span className="text-term-green">lee tus transcripts locales en solo lectura</span>.
+          No hay que iniciar sesión ni pegar ninguna clave: los costos se calculan
+          desde los tokens que ya viven en tu disco.
+        </p>
+        <ol className="text-sm space-y-2 list-decimal ml-4">
+          <li>
+            <span className="text-term-amber">Detección automática.</span> Al arrancar
+            (<code className="text-term-amber">npm run serve</code>) se ingieren solas:
+            <ul className="ml-4 mt-1 text-term-muted list-disc">
+              <li>Claude Code → <code>~/.claude/projects/**/*.jsonl</code></li>
+              <li>Codex → <code>~/.codex/sessions/**</code> y <code>archived_sessions/</code></li>
+            </ul>
+          </li>
+          <li>
+            <span className="text-term-amber">Ruta distinta.</span> Si tus transcripts
+            están en otro lado, ponelo en <span className="text-term-amber">Configuración → Rutas de agentes</span>{" "}
+            (acepta <code>~/</code>) y corré <span className="text-term-amber">Rebuild</span>.
+          </li>
+          <li>
+            <span className="text-term-amber">Modelo sin tarifa.</span> Un modelo nuevo
+            aparece con costo 0 + aviso hasta que agregás su precio en{" "}
+            <span className="text-term-amber">Configuración → pricing.json</span>. Nunca se estima en silencio.
+          </li>
+        </ol>
+        <p className="text-xs text-term-muted mt-3">
+          CLI equivalente: <code className="text-term-amber">npm run cli</code> (tabla de gasto) ·{" "}
+          <code className="text-term-amber">npm run cli -- --waste</code> (fugas de tokens).
+        </p>
+      </Panel>
+
+      <Panel title="Seguridad y claves API">
+        <p className="text-sm text-term-muted mb-3">
+          Programa <span className="text-term-green">local y de solo lectura</span>. Aun así,
+          estas son las garantías concretas:
+        </p>
+        <ul className="text-sm space-y-2">
+          <li>
+            <span className="text-term-green">✓ Nunca pide ni almacena claves.</span> No necesita
+            API keys: calcula el costo <em>equivalente API</em> desde conteos de tokens locales.
+            Si algo te pide una clave, no es este programa.
+          </li>
+          <li>
+            <span className="text-term-green">✓ Fuentes intactas.</span> Todo se abre con flag{" "}
+            <code>'r'</code> (<code>fs-readonly.ts</code>): jamás crea, escribe ni trunca. Un test de
+            integridad hashea el árbol de fuentes antes/después de ingerir y exige que no cambie.
+          </li>
+          <li>
+            <span className="text-term-green">✓ Solo lee transcripts.</span> La búsqueda es una
+            lista blanca (<code>rollout-*.jsonl</code>, <code>*.jsonl</code>, memoria <code>*.md</code>).
+            Nunca abre <code>~/.codex/auth.json</code>, <code>.env</code> ni archivos de credenciales.
+          </li>
+          <li>
+            <span className="text-term-green">✓ Guarda solo métricas.</span> En <code>./data/motor.db</code>
+            van conteos de tokens, modelo y nombres de skills — no el texto de tus prompts.
+          </li>
+          <li>
+            <span className="text-term-green">✓ Sin exposición de red.</span> El servidor bindea solo a{" "}
+            <code>127.0.0.1:8081</code>. No lo pongas detrás de un proxy público ni lo expongas a la LAN;
+            no tiene auth porque no está pensado para eso.
+          </li>
+        </ul>
+        <p className="text-xs text-term-muted mt-3">
+          Precios en <code>pricing.json</code> son list-price de terceros (jul-2026); reverificá contra
+          las páginas oficiales cuando importe para dinero real.
+        </p>
+      </Panel>
+    </div>
+  );
+}
+
 // ─────────────────────────── shared ───────────────────────────
 const Loading = () => <div className="text-term-muted text-sm animate-pulse">cargando…</div>;
 const ErrorMsg = ({ msg }: { msg: string }) => <div className="text-term-red text-sm">error: {msg}</div>;
@@ -549,10 +792,12 @@ function Legend({ items }: { items: [string, string][] }) {
 // ─────────────────────────── App shell ───────────────────────────
 const TABS = [
   ["Inicio", Inicio],
+  ["Ahorro", Ahorro],
   ["Skills", Skills],
   ["Memoria", Memoria],
   ["Actividad", Actividad],
   ["Configuración", Configuracion],
+  ["Ayuda", Ayuda],
 ] as const;
 
 export default function App() {

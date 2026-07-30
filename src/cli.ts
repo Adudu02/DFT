@@ -8,6 +8,10 @@
 import { ClaudeCodeAdapter, defaultProjectsRoot } from "./adapters/claude-code.js";
 import { loadPricing } from "./lib/pricing.js";
 import { aggregate, type Row } from "./lib/aggregate.js";
+import { openDb, defaultDbPath } from "./lib/db.js";
+import { ingestAll } from "./ingest.js";
+import { loadConfig } from "./lib/config.js";
+import { getWaste, type WasteFinding } from "./lib/waste.js";
 import type { NormalizedSession } from "./adapters/types.js";
 
 function fmtInt(n: number): string {
@@ -60,8 +64,49 @@ function printTable(rows: Row[], total: Aggregated["total"]): void {
 
 type Aggregated = ReturnType<typeof aggregate>;
 
+const WASTE_TAG: Record<WasteFinding["kind"], string> = {
+  "cache-miss": "CACHE",
+  "session-bloat": "BLOAT",
+  "model-mismatch": "MODEL",
+};
+
+function printWasteFinding(f: WasteFinding): void {
+  const tag = WASTE_TAG[f.kind];
+  const save = f.estUsd ? ` · ahorro ~${fmtUsd(f.estUsd)}` : "";
+  console.log(`[${tag}] ${f.project}/${f.sessionId}${save}`);
+  console.log(`  ${f.title}`);
+  console.log(`  ${f.detail}`);
+}
+
+/** F-waste: abre la DB (cache), ingesta e imprime dónde se fugan tokens. */
+async function runWaste(root: string): Promise<void> {
+  const pricing = await loadPricing();
+  const config = await loadConfig();
+  const db = openDb(defaultDbPath());
+  try {
+    await ingestAll(db, { projectsRoot: root, pricing, staleDays: config.staleDays });
+    const { findings, totalEstUsd } = getWaste(db, pricing, config.waste);
+    if (findings.length === 0) {
+      console.log("Sin fugas detectadas con los umbrales actuales (data/config.json → waste).");
+      return;
+    }
+    console.log(`Fugas de tokens (${findings.length}) · ahorro estimado ~${fmtUsd(totalEstUsd)}\n`);
+    for (const f of findings) {
+      printWasteFinding(f);
+      console.log("");
+    }
+  } finally {
+    db.close();
+  }
+}
+
 async function main(): Promise<void> {
-  const root = process.argv[2] ?? defaultProjectsRoot();
+  const args = process.argv.slice(2);
+  const wasteMode = args.includes("--waste");
+  const root = args.find((a) => !a.startsWith("--")) ?? defaultProjectsRoot();
+
+  if (wasteMode) return runWaste(root);
+
   const adapter = new ClaudeCodeAdapter(root);
   const pricing = await loadPricing();
 

@@ -7,6 +7,7 @@ import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { readFileRO } from "./fs-readonly.js";
+import { DEFAULT_WASTE, type WasteThresholds } from "./waste.js";
 
 export interface Config {
   hourlyRate: number;
@@ -14,6 +15,7 @@ export interface Config {
   minutesPerUseDefault: number;
   minutesPerUse: Record<string, number>;
   agentPaths: Record<string, string>;
+  waste: WasteThresholds;
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -22,6 +24,7 @@ export const DEFAULT_CONFIG: Config = {
   minutesPerUseDefault: 0,
   minutesPerUse: {},
   agentPaths: {},
+  waste: { ...DEFAULT_WASTE },
 };
 
 function defaultConfigPath(): string {
@@ -35,6 +38,7 @@ function merge(partial: Partial<Config>): Config {
     ...partial,
     minutesPerUse: { ...DEFAULT_CONFIG.minutesPerUse, ...(partial.minutesPerUse ?? {}) },
     agentPaths: { ...DEFAULT_CONFIG.agentPaths, ...(partial.agentPaths ?? {}) },
+    waste: { ...DEFAULT_WASTE, ...(partial.waste ?? {}) },
   };
 }
 

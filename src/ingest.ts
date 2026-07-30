@@ -7,17 +7,13 @@
  * Fuentes = SOLO LECTURA (readFileRO + stat). Escritura solo en ./data.
  */
 import { stat, unlink } from "node:fs/promises";
-import { basename, join } from "node:path";
+import { defaultProjectsRoot } from "./adapters/claude-code.js";
+import { getIngestAdapters, rootsFromConfig, type IngestAdapter } from "./adapters/registry.js";
 import type { DB } from "./lib/db.js";
 import { openDb, defaultDbPath } from "./lib/db.js";
 import { readFileRO } from "./lib/fs-readonly.js";
-import {
-  ClaudeCodeAdapter,
-  defaultProjectsRoot,
-  parseTranscriptLines,
-  parseSkillUsages,
-} from "./adapters/claude-code.js";
 import { costForEvent } from "./lib/cost.js";
+import { loadConfig } from "./lib/config.js";
 import { loadPricing, getRate, UnknownModels, type Pricing } from "./lib/pricing.js";
 import { scanMemory } from "./lib/memory.js";
 
@@ -38,8 +34,8 @@ interface OffsetRow {
 
 async function ingestFile(
   db: DB,
+  adapter: IngestAdapter,
   path: string,
-  project: string,
   pricing: Pricing,
   unknown: UnknownModels,
 ): Promise<{ inserted: number; skipped: number }> {
@@ -58,10 +54,9 @@ async function ingestFile(
   const fromLine = prev && sizeNow >= prev.size ? prev.line_count : 0;
 
   const raw = await readFileRO(path);
-  const { events, lineCount, skipped } = parseTranscriptLines(raw, fromLine);
-  const skillUsages = parseSkillUsages(raw, fromLine);
-
-  const sessionId = basename(path, ".jsonl");
+  const { sessionId, project } = adapter.deriveIds(path, raw);
+  const { events, lineCount, skipped } = adapter.parseLines(raw, fromLine, sessionId);
+  const skillUsages = adapter.parseSkills(raw, fromLine);
 
   const insertEvent = db.prepare(`
     INSERT OR IGNORE INTO usage_events
@@ -107,13 +102,14 @@ async function ingestFile(
 
     db.prepare(`
       INSERT INTO sessions (id, agent, project, started_at, ended_at, turns)
-      VALUES (?, 'claude-code', ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
+        agent = excluded.agent,
         project = excluded.project,
         started_at = excluded.started_at,
         ended_at = excluded.ended_at,
         turns = excluded.turns
-    `).run(sessionId, project, agg.started, agg.ended, agg.turns);
+    `).run(sessionId, adapter.id, project, agg.started, agg.ended, agg.turns);
 
     db.prepare(`
       INSERT INTO ingest_offsets (path, size, mtime_ms, line_count, updated_at)
@@ -132,33 +128,37 @@ async function ingestFile(
   return { inserted, skipped };
 }
 
-/** Ingesta todos los transcripts descubiertos hacia `db`. */
+/** Ingesta todos los transcripts descubiertos (todos los adapters) hacia `db`. */
 export async function ingestAll(
   db: DB,
-  opts: { projectsRoot?: string; pricing?: Pricing; staleDays?: number } = {},
+  opts: { projectsRoot?: string; codexRoot?: string; pricing?: Pricing; staleDays?: number } = {},
 ): Promise<IngestSummary> {
-  const root = opts.projectsRoot ?? defaultProjectsRoot();
-  const adapter = new ClaudeCodeAdapter(root);
   const pricing = opts.pricing ?? (await loadPricing());
   const unknown = new UnknownModels();
+  const adapters = getIngestAdapters({ claudeRoot: opts.projectsRoot, codexRoot: opts.codexRoot });
 
-  const paths = await adapter.discoverSessions();
+  let files = 0;
   let eventsInserted = 0;
   let filesChanged = 0;
   let unparseableLines = 0;
 
-  for (const path of paths) {
-    const project = basename(join(path, ".."));
-    const { inserted, skipped } = await ingestFile(db, path, project, pricing, unknown);
-    if (inserted > 0) filesChanged++;
-    eventsInserted += inserted;
-    unparseableLines += skipped;
+  for (const adapter of adapters) {
+    const paths = await adapter.discover();
+    files += paths.length;
+    for (const path of paths) {
+      const { inserted, skipped } = await ingestFile(db, adapter, path, pricing, unknown);
+      if (inserted > 0) filesChanged++;
+      eventsInserted += inserted;
+      unparseableLines += skipped;
+    }
   }
 
-  const memories = await refreshMemoryNodes(db, root, opts.staleDays);
+  // Memoria vive bajo la raíz de Claude Code (~/.claude/projects).
+  const memRoot = opts.projectsRoot ?? defaultProjectsRoot();
+  const memories = await refreshMemoryNodes(db, memRoot, opts.staleDays);
 
   return {
-    files: paths.length,
+    files,
     filesChanged,
     eventsInserted,
     memories,
@@ -204,7 +204,14 @@ export async function rebuild(
   }
   const db = openDb(dbPath);
   try {
-    return await ingestAll(db, { projectsRoot: opts.projectsRoot });
+    // Honra config.agentPaths salvo que el llamador fuerce una raíz (tests).
+    const config = await loadConfig();
+    const roots = rootsFromConfig(config.agentPaths);
+    return await ingestAll(db, {
+      staleDays: config.staleDays,
+      projectsRoot: opts.projectsRoot ?? roots.projectsRoot,
+      codexRoot: roots.codexRoot,
+    });
   } finally {
     db.close();
   }
