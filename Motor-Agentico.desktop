@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Motor Agéntico
+Comment=Dashboard local de costos y actividad de agentes
+Exec=/home/AduduSigma/Documents/Projects/Dashboard/motor-agentico/start.sh
+Path=/home/AduduSigma/Documents/Projects/Dashboard/motor-agentico
+Terminal=false
+Categories=Development;Utility;

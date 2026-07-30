@@ -1,0 +1,119 @@
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { parseSkillUsages } from "../src/adapters/claude-code.js";
+import { openDb, type DB } from "../src/lib/db.js";
+import { ingestAll } from "../src/ingest.js";
+import { getSkills, type CatalogEntry } from "../src/lib/skills.js";
+import { loadConfig, saveConfig, DEFAULT_CONFIG, type Config } from "../src/lib/config.js";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const fx = (name: string) => join(here, "fixtures", name);
+
+describe("parseSkillUsages", () => {
+  const usages = parseSkillUsages(readFileSync(fx("skills.jsonl"), "utf8"));
+
+  it("detecta command-name en eventos user (con y sin command-args)", () => {
+    const caveman = usages.filter((u) => u.skill === "caveman");
+    expect(caveman).toHaveLength(2);
+    expect(caveman[0].kind).toBe("command");
+  });
+
+  it("detecta comando nativo /model", () => {
+    expect(usages.some((u) => u.skill === "model" && u.kind === "command")).toBe(true);
+  });
+
+  it("detecta Skill tool_use en assistant", () => {
+    const fd = usages.find((u) => u.skill === "frontend-design");
+    expect(fd?.kind).toBe("skill-tool");
+  });
+});
+
+describe("ingest + getSkills", () => {
+  let tmp: string;
+  const catalog = new Map<string, CatalogEntry>([
+    ["caveman", { name: "caveman", description: "modo caveman", category: "skill" }],
+    ["other-skill", { name: "other-skill", description: "", category: "skill" }],
+  ]);
+
+  beforeEach(() => {
+    tmp = mkdtempSync(join(tmpdir(), "motor-sk-"));
+    const dir = join(tmp, "proj");
+    mkdirSync(dir, { recursive: true });
+    copyFileSync(fx("skills.jsonl"), join(dir, "sk.jsonl"));
+  });
+  afterEach(() => rmSync(tmp, { recursive: true, force: true }));
+
+  async function seed(): Promise<DB> {
+    const db = openDb(join(tmp, "motor.db"));
+    // pricing default del repo
+    const { loadPricing } = await import("../src/lib/pricing.js");
+    await ingestAll(db, { projectsRoot: tmp, pricing: await loadPricing() });
+    return db;
+  }
+
+  it("skills_usage no se duplica en re-ingesta", async () => {
+    const db = await seed();
+    const before = (db.prepare("SELECT COUNT(*) AS n FROM skills_usage").get() as { n: number }).n;
+    const { loadPricing } = await import("../src/lib/pricing.js");
+    await ingestAll(db, { projectsRoot: tmp, pricing: await loadPricing() });
+    const after = (db.prepare("SELECT COUNT(*) AS n FROM skills_usage").get() as { n: number }).n;
+    expect(after).toBe(before);
+    expect(before).toBe(4); // caveman x2, model, frontend-design
+    db.close();
+  });
+
+  it("agrega usos y calcula savedUsd = usos·min·tarifa/60", async () => {
+    const db = await seed();
+    const config: Config = { ...DEFAULT_CONFIG, hourlyRate: 120, minutesPerUseDefault: 5 };
+    const { skills } = getSkills(db, config, catalog);
+    const byName = Object.fromEntries(skills.map((s) => [s.name, s]));
+
+    // caveman: 2 usos · 5 min · $120/h / 60 = $20
+    expect(byName["caveman"].uses).toBe(2);
+    expect(byName["caveman"].savedUsd).toBeCloseTo(20, 6);
+    expect(byName["caveman"].category).toBe("skill");
+    expect(byName["caveman"].inCatalog).toBe(true);
+
+    // /model = builtin => categoria sistema
+    expect(byName["model"].category).toBe("sistema");
+    // frontend-design (Skill tool_use) no esta en el catalogo de prueba => otro
+    expect(byName["frontend-design"].category).toBe("otro");
+    // skill del catalogo sin uso aparece en gris (uses 0)
+    expect(byName["other-skill"].uses).toBe(0);
+    expect(byName["other-skill"].savedUsd).toBe(0);
+    db.close();
+  });
+
+  it("tarifa/hora 0 => ahorro 0 (como capturas)", async () => {
+    const db = await seed();
+    const { skills } = getSkills(db, { ...DEFAULT_CONFIG, minutesPerUseDefault: 30 }, catalog);
+    expect(skills.every((s) => s.savedUsd === 0)).toBe(true);
+    db.close();
+  });
+});
+
+describe("config round-trip", () => {
+  let tmp: string;
+  beforeEach(() => {
+    tmp = mkdtempSync(join(tmpdir(), "motor-cfg-"));
+  });
+  afterEach(() => rmSync(tmp, { recursive: true, force: true }));
+
+  it("saveConfig hace merge y loadConfig lo recupera", async () => {
+    const path = join(tmp, "config.json");
+    const saved = await saveConfig({ hourlyRate: 90, minutesPerUse: { caveman: 8 } }, path);
+    expect(saved.hourlyRate).toBe(90);
+    expect(saved.staleDays).toBe(DEFAULT_CONFIG.staleDays); // default preservado
+    const loaded = await loadConfig(path);
+    expect(loaded.hourlyRate).toBe(90);
+    expect(loaded.minutesPerUse.caveman).toBe(8);
+  });
+
+  it("loadConfig sin archivo => defaults sin lanzar", async () => {
+    const loaded = await loadConfig(join(tmp, "no-existe.json"));
+    expect(loaded).toEqual(DEFAULT_CONFIG);
+  });
+});

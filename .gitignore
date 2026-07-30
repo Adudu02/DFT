@@ -1,0 +1,8 @@
+node_modules/
+web/dist/
+data/motor.db
+data/motor.db-wal
+data/motor.db-shm
+data/reports/
+data/unknown-models.json
+*.log

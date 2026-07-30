@@ -1,0 +1,102 @@
+/**
+ * CLI Fase 1: descubre transcripts de Claude Code (SOLO LECTURA), agrega por
+ * dia/modelo e imprime la tabla de gasto "equivalente API" (PLAN §2, §6-F1).
+ *
+ *   npm run cli            # usa ~/.claude/projects
+ *   npm run cli -- <root>  # usa otra raiz de projects
+ */
+import { ClaudeCodeAdapter, defaultProjectsRoot } from "./adapters/claude-code.js";
+import { loadPricing } from "./lib/pricing.js";
+import { aggregate, type Row } from "./lib/aggregate.js";
+import type { NormalizedSession } from "./adapters/types.js";
+
+function fmtInt(n: number): string {
+  return n.toLocaleString("en-US");
+}
+function fmtUsd(n: number): string {
+  return `$${n.toFixed(2)}`;
+}
+
+function pad(s: string, w: number, right = false): string {
+  return right ? s.padStart(w) : s.padEnd(w);
+}
+
+function printTable(rows: Row[], total: Aggregated["total"]): void {
+  const headers = ["DIA", "MODELO", "in", "out", "cache-w", "cache-r", "$ equiv-API"];
+  const data = rows.map((r) => [
+    r.day,
+    r.model,
+    fmtInt(r.input),
+    fmtInt(r.output),
+    fmtInt(r.cacheWrite),
+    fmtInt(r.cacheRead),
+    fmtUsd(r.costUsd),
+  ]);
+  const totalRow = [
+    "TOTAL",
+    "",
+    fmtInt(total.input),
+    fmtInt(total.output),
+    fmtInt(total.cacheWrite),
+    fmtInt(total.cacheRead),
+    fmtUsd(total.costUsd),
+  ];
+
+  const all = [headers, ...data, totalRow];
+  const widths = headers.map((_, c) => Math.max(...all.map((row) => row[c].length)));
+  const rightAlign = [false, false, true, true, true, true, true];
+
+  const renderRow = (row: string[]) =>
+    row.map((cell, c) => pad(cell, widths[c], rightAlign[c])).join("  ");
+
+  const sep = widths.map((w) => "-".repeat(w)).join("  ");
+
+  console.log(renderRow(headers));
+  console.log(sep);
+  for (const row of data) console.log(renderRow(row));
+  console.log(sep);
+  console.log(renderRow(totalRow));
+}
+
+type Aggregated = ReturnType<typeof aggregate>;
+
+async function main(): Promise<void> {
+  const root = process.argv[2] ?? defaultProjectsRoot();
+  const adapter = new ClaudeCodeAdapter(root);
+  const pricing = await loadPricing();
+
+  const paths = await adapter.discoverSessions();
+  const sessions: NormalizedSession[] = [];
+  for (const p of paths) {
+    try {
+      sessions.push(await adapter.parseSession(p));
+    } catch (err) {
+      console.error(`! no se pudo parsear ${p}: ${(err as Error).message}`);
+    }
+  }
+
+  const { rows, total, unknownModels } = aggregate(sessions, pricing);
+
+  const eventCount = sessions.reduce((n, s) => n + s.events.length, 0);
+  console.log(
+    `Transcripts: ${paths.length} archivos · ${sessions.length} sesiones · ${eventCount} eventos de uso`,
+  );
+  console.log("Costos = equivalente API (tarifa medida; no lo que pagas por suscripcion)\n");
+
+  if (rows.length === 0) {
+    console.log("(sin eventos de uso)");
+  } else {
+    printTable(rows, total);
+  }
+
+  if (unknownModels.length > 0) {
+    console.log(
+      `\n⚠ ${unknownModels.length} modelos sin tarifa (costo 0): ${unknownModels.join(", ")}`,
+    );
+  }
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -1,0 +1,7 @@
+{
+  "hourlyRate": 0,
+  "staleDays": 30,
+  "minutesPerUseDefault": 0,
+  "minutesPerUse": {},
+  "agentPaths": {}
+}
