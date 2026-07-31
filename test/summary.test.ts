@@ -53,4 +53,20 @@ describe("getSummary — perAgent", () => {
     // los shares suman ~1 (por tokens)
     expect(s.perAgent.reduce((n, a) => n + a.share, 0)).toBeCloseTo(1, 6);
   });
+
+  it("perAgentModels desglosa modelos por agente; share suma ~1 dentro del agente con tarifa", () => {
+    const s = getSummary(db, CLAUDE_ONLY, { windowDays: 60 });
+
+    // claude-code tiene tarifa => sus modelos suman costo>0 y share ~1 dentro del agente.
+    const claude = s.perAgentModels["claude-code"];
+    expect(claude).toBeDefined();
+    expect(claude.some((m) => m.model === "claude-opus-4-8" && m.costUsd > 0)).toBe(true);
+    expect(claude.reduce((n, m) => n + m.share, 0)).toBeCloseTo(1, 6);
+
+    // codex sin tarifa => sus modelos aparecen igual, con costo 0 (donut => Empty).
+    const codex = s.perAgentModels["codex"];
+    expect(codex).toBeDefined();
+    expect(codex.length).toBeGreaterThan(0);
+    expect(codex.every((m) => m.costUsd === 0)).toBe(true);
+  });
 });

@@ -44,6 +44,7 @@ export interface Summary {
   totalTokens: number;
   daily: DailyPoint[];
   perModel: ModelShare[];
+  perAgentModels: Record<string, ModelShare[]>; // agente => su desglose por modelo (para el donut filtrable)
   perAgent: AgentShare[];
   activity: { turns: number; projects: number; deltaPct7d: number | null };
   streakDays: number;
@@ -62,6 +63,7 @@ function emptySummary(windowDays: number): Summary {
     totalTokens: 0,
     daily: [],
     perModel: [],
+    perAgentModels: {},
     perAgent: [],
     activity: { turns: 0, projects: 0, deltaPct7d: null },
     streakDays: 0,
@@ -112,6 +114,34 @@ export function getSummary(
     (n, m) => n + m.input + m.output + m.cacheWrite + m.cacheRead,
     0,
   );
+
+  // Desglose por (agente, modelo) para el donut filtrable por agente. `share` es
+  // fracción DENTRO del agente (así el donut de un agente suma ~1). Un modelo sin
+  // tarifa queda con costo 0 igual que en perModel.
+  const perAgentModelRows = db
+    .prepare(
+      `SELECT s.agent AS agent, u.model AS model,
+              SUM(u.cost_usd) AS costUsd,
+              SUM(u.input_tokens) AS input, SUM(u.output_tokens) AS output,
+              SUM(u.cache_write_tokens) AS cacheWrite, SUM(u.cache_read_tokens) AS cacheRead
+       FROM usage_events u JOIN sessions s ON s.id = u.session_id
+       WHERE u.day BETWEEN ? AND ? GROUP BY s.agent, u.model ORDER BY costUsd DESC`,
+    )
+    .all(from, to) as (Omit<ModelShare, "known" | "share"> & { agent: string })[];
+
+  const agentCostTotals = new Map<string, number>();
+  for (const r of perAgentModelRows) {
+    agentCostTotals.set(r.agent, (agentCostTotals.get(r.agent) ?? 0) + r.costUsd);
+  }
+  const perAgentModels: Record<string, ModelShare[]> = {};
+  for (const { agent, ...m } of perAgentModelRows) {
+    const total = agentCostTotals.get(agent) ?? 0;
+    (perAgentModels[agent] ??= []).push({
+      ...m,
+      known: !!pricing.models[m.model],
+      share: total > 0 ? m.costUsd / total : 0,
+    });
+  }
 
   // Participación por agente (claude-code, codex, …). Share por TOKENS, no por
   // costo: un agente sin tarifa (p.ej. gpt-*) tiene costo 0 pero sí gasta tokens.
@@ -170,6 +200,7 @@ export function getSummary(
     totalTokens,
     daily,
     perModel,
+    perAgentModels,
     perAgent,
     activity: { turns, projects, deltaPct7d },
     streakDays,

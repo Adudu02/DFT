@@ -35,6 +35,7 @@ interface Summary {
   totalTokens: number;
   daily: { day: string; costUsd: number; input: number; output: number }[];
   perModel: ModelShare[];
+  perAgentModels: Record<string, ModelShare[]>;
   perAgent: AgentShare[];
   activity: { turns: number; projects: number; deltaPct7d: number | null };
   streakDays: number;
@@ -165,11 +166,14 @@ function Panel({ title, children, className = "" }: { title?: string; children: 
 function Inicio() {
   const { data, error } = useApi<Summary>("/api/summary");
   const [mode, setMode] = useState<"subs" | "tokens">("subs");
+  const [agentSel, setAgentSel] = useState<string>("todos");
   if (error) return <ErrorMsg msg={error} />;
   if (!data) return <Loading />;
   const s = data;
   const spark = s.daily.map((d) => ({ day: d.day.slice(5), v: mode === "subs" ? d.costUsd : d.input + d.output }));
-  const donut = s.perModel.filter((m) => m.costUsd > 0);
+  const agents = s.perAgent.map((a) => a.agent);
+  const donutSrc = agentSel === "todos" ? s.perModel : (s.perAgentModels[agentSel] ?? []);
+  const donut = donutSrc.filter((m) => m.costUsd > 0);
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
@@ -253,6 +257,19 @@ function Inicio() {
       </Panel>
 
       <Panel title="Total">
+        {agents.length > 0 && (
+          <div className="flex flex-wrap text-xs border border-term-border rounded overflow-hidden mb-2 w-fit">
+            {["todos", ...agents].map((a) => (
+              <button
+                key={a}
+                onClick={() => setAgentSel(a)}
+                className={`px-2 py-0.5 ${agentSel === a ? "bg-term-amber text-black" : "text-term-muted"}`}
+              >
+                {a === "todos" ? "TODOS" : a}
+              </button>
+            ))}
+          </div>
+        )}
         {donut.length > 0 ? (
           <div className="h-40">
             <ResponsiveContainer width="100%" height="100%">
