@@ -209,6 +209,8 @@ function Inicio() {
               <XAxis dataKey="day" tick={{ fill: "#8a7a55", fontSize: 10 }} interval="preserveStartEnd" />
               <Tooltip
                 contentStyle={{ background: "#141210", border: "1px solid #3a2f1a", color: "#ffb000" }}
+                itemStyle={{ color: "#ffb000" }}
+                labelStyle={{ color: "#ffb000" }}
                 formatter={(v: number) => (mode === "subs" ? usd(v) : compact(v))}
               />
               <Line type="monotone" dataKey="v" stroke="#ffb000" strokeWidth={2} dot={false} isAnimationActive={false} />
@@ -281,6 +283,8 @@ function Inicio() {
                 </Pie>
                 <Tooltip
                   contentStyle={{ background: "#141210", border: "1px solid #3a2f1a", color: "#ffb000" }}
+                  itemStyle={{ color: "#ffb000" }}
+                  labelStyle={{ color: "#ffb000" }}
                   formatter={(v: number) => usd(v)}
                 />
               </PieChart>
@@ -544,6 +548,8 @@ function Ahorro() {
                 <XAxis dataKey="day" tick={{ fill: "#8a7a55", fontSize: 10 }} interval="preserveStartEnd" />
                 <Tooltip
                   contentStyle={{ background: "#141210", border: "1px solid #3a2f1a", color: "#7dd35f" }}
+                  itemStyle={{ color: "#7dd35f" }}
+                  labelStyle={{ color: "#7dd35f" }}
                   formatter={(v: number) => usd(v)}
                 />
                 <Line type="monotone" dataKey="v" stroke="#7dd35f" strokeWidth={2} dot={false} isAnimationActive={false} />
