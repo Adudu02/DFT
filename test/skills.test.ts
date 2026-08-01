@@ -117,3 +117,17 @@ describe("config round-trip", () => {
     expect(loaded).toEqual(DEFAULT_CONFIG);
   });
 });
+
+describe("parseSkillUsages — sin falsos positivos", () => {
+  it("un tool_result con <command-name> dentro (contenido de archivo) NO cuenta como uso", () => {
+    const raw = readFileSync(join(here, "fixtures", "skill-falsepositive.jsonl"), "utf8");
+    const usos = parseSkillUsages(raw);
+    expect(usos.map((u) => u.skill)).toEqual(["deploy"]); // solo el comando real
+    expect(usos.some((u) => u.skill === "x")).toBe(false); // el del README, no
+  });
+
+  it("mencionar /skill en prosa no cuenta como uso", () => {
+    const raw = readFileSync(join(here, "fixtures", "skill-falsepositive.jsonl"), "utf8");
+    expect(parseSkillUsages(raw).some((u) => u.skill === "ponytail")).toBe(false);
+  });
+});

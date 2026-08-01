@@ -111,6 +111,7 @@ interface Config {
   minutesPerUseDefault: number;
   minutesPerUse: Record<string, number>;
   agentPaths: Record<string, string>;
+  timeZone: string;
   waste: WasteThresholds;
 }
 interface WasteFinding {
@@ -141,11 +142,6 @@ const usd = (n: number) => "$" + (n ?? 0).toFixed(2);
 const compact = (n: number) =>
   n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "k" : String(n ?? 0);
 const pct = (n: number) => (n * 100).toFixed(0) + "%";
-/** HH:MM en la zona horaria del navegador (los ts del transcript vienen en UTC). */
-const hhmm = (ts: string) => {
-  const d = new Date(ts);
-  return isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-};
 const AMBER = ["#ffb000", "#b87a00", "#e5533c", "#7dd35f", "#8a7a55", "#c9922e", "#5f8fd3"];
 
 // ── refresco global ──────────────────────────────────────────────────────────
@@ -282,7 +278,7 @@ function Inicio() {
           {s.perModel.map((m, i) => (
             <div key={m.model} className="flex items-center gap-2 text-sm">
               <span className="w-2 h-2 rounded-full" style={{ background: AMBER[i % AMBER.length] }} />
-              <span className={`flex-1 truncate ${m.known ? "" : "text-term-red"}`}>
+              <span className={`flex-1 min-w-0 truncate ${m.known ? "" : "text-term-red"}`}>
                 {m.model}
                 {!m.known && " ·sin tarifa"}
               </span>
@@ -367,7 +363,7 @@ function Skills() {
   return (
     <div className="grid gap-4">
       <Panel title="Uso por categoría">
-        <div className="grid gap-1">
+        <div className="grid gap-1 min-w-0">
           {Object.entries(data.categories).sort((a, b) => b[1] - a[1]).map(([c, n]) => (
             <div key={c} className="flex items-center gap-2 text-xs">
               <span className="w-20 text-term-muted">{c}</span>
@@ -518,12 +514,12 @@ function Actividad() {
           <div className="grid gap-2">
             {d.sessions.map((s) => (
               <div key={s.id} className="border-b border-term-border/50 pb-2 last:border-0">
-                <button className="w-full text-left flex justify-between items-center" onClick={() => setOpen(open === s.id ? null : s.id)}>
-                  <span className="truncate">
+                <button className="w-full text-left flex justify-between items-center gap-3" onClick={() => setOpen(open === s.id ? null : s.id)}>
+                  <span className="flex-1 min-w-0 truncate" title={`${s.project}/${s.id}`}>
                     <span className="text-term-muted text-xs">{s.project}/</span>
                     <span className="text-term-amber">{s.id.slice(0, 8)}</span>
                   </span>
-                  <span className="flex gap-3 text-xs text-term-muted">
+                  <span className="flex-none flex gap-3 text-xs text-term-muted">
                     <span>{s.turns} turnos</span>
                     <span>{s.models.length} modelos</span>
                     <span className="text-term-amber">{usd(s.costUsd)}</span>
@@ -539,12 +535,33 @@ function Actividad() {
   );
 }
 
+/** Una línea de prompt: click para expandir/compactar el texto completo. */
+function PromptRow({ t }: { t: SessionTurn }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <button
+      onClick={() => setOpen((o) => !o)}
+      aria-expanded={open}
+      className="w-full text-left flex gap-2 items-baseline min-w-0 rounded px-1 -mx-1 hover:bg-term-bg focus:outline-none focus:ring-1 focus:ring-term-amber"
+    >
+      <span className="text-term-green font-mono flex-none" title={t.ts}>
+        {t.time}
+      </span>
+      <span className={`flex-1 min-w-0 text-term-muted ${open ? "whitespace-pre-wrap break-words" : "truncate"}`}>
+        {t.prompt}
+      </span>
+      <span className="flex-none text-term-muted">{compact(t.tokens)}</span>
+      <span className="flex-none text-term-amber w-14 text-right">{usd(t.costUsd)}</span>
+    </button>
+  );
+}
+
 function SessionDrill({ id }: { id: string }) {
   const { data } = useApi<SessionDetail>(`/api/session/${id}`);
   const { data: turns } = useApi<SessionTurn[]>(`/api/session/${id}/turns`);
   if (!data) return <div className="text-xs text-term-muted mt-2">cargando…</div>;
   return (
-    <div className="mt-2 ml-2 text-xs">
+    <div className="mt-2 ml-2 text-xs min-w-0">
       {data.models.map((m) => (
         <div key={m.model} className="flex justify-between py-0.5">
           <span className="text-term-muted">{m.model}</span>
@@ -561,18 +578,9 @@ function SessionDrill({ id }: { id: string }) {
           <div className="text-term-muted uppercase tracking-widest mb-1" style={{ fontSize: 10 }}>
             Prompts ({turns.length}) · hora · costo
           </div>
-          <div className="grid gap-1">
+          <div className="grid gap-1 min-w-0">
             {turns.map((t, i) => (
-              <div key={i} className="flex gap-2 items-baseline">
-                <span className="text-term-green font-mono flex-none" title={t.ts}>
-                  {hhmm(t.ts) || t.time}
-                </span>
-                <span className="flex-1 truncate text-term-muted" title={t.prompt}>
-                  {t.prompt}
-                </span>
-                <span className="flex-none text-term-muted">{compact(t.tokens)}</span>
-                <span className="flex-none text-term-amber w-14 text-right">{usd(t.costUsd)}</span>
-              </div>
+              <PromptRow key={i} t={t} />
             ))}
           </div>
         </div>
@@ -695,6 +703,15 @@ function Configuracion() {
         </Field>
         <Field label="Umbral obsolescencia (días)">
           <input type="number" value={form.staleDays} onChange={num("staleDays")} className="in" />
+        </Field>
+        <Field label="Zona horaria (IANA, vacío = la del sistema)">
+          <input
+            type="text"
+            placeholder="America/Merida"
+            value={form.timeZone}
+            onChange={(e) => setForm({ ...form, timeZone: e.target.value })}
+            className="in"
+          />
         </Field>
         <Field label="Minutos por uso (default)">
           <input type="number" value={form.minutesPerUseDefault} onChange={num("minutesPerUseDefault")} className="in" />

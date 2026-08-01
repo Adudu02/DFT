@@ -7,6 +7,7 @@
  * sin persistirlos — la garantía "la DB solo guarda métricas" sigue intacta.
  */
 import { readFileRO } from "./fs-readonly.js";
+import { dayInTz } from "./time.js";
 import type { DB } from "./db.js";
 
 export interface ActivitySession {
@@ -46,7 +47,7 @@ export interface SessionDetail {
 }
 
 /** Sesiones agrupadas por día (día = substr de ended_at), más reciente primero. */
-export function getActivity(db: DB): ActivityDay[] {
+export function getActivity(db: DB, timeZone?: string): ActivityDay[] {
   const rows = db
     .prepare(
       `SELECT s.id, s.project, s.agent, s.started_at AS startedAt, s.ended_at AS endedAt, s.turns,
@@ -59,7 +60,8 @@ export function getActivity(db: DB): ActivityDay[] {
 
   const byDay = new Map<string, ActivityDay>();
   for (const r of rows) {
-    const day = (r.endedAt ?? r.startedAt ?? "").slice(0, 10);
+    const src = r.endedAt ?? r.startedAt ?? "";
+    const day = src ? dayInTz(src, timeZone) : "";
     if (!day) continue;
     let d = byDay.get(day);
     if (!d) {
@@ -72,14 +74,30 @@ export function getActivity(db: DB): ActivityDay[] {
 }
 
 export interface SessionTurn {
-  ts: string; // ISO del prompt
-  time: string; // HH:MM (hora local del transcript, tal cual viene el ISO en UTC)
+  ts: string; // ISO del prompt (UTC, como viene del transcript)
+  time: string; // HH:MM ya en la zona horaria de config.timeZone
   prompt: string;
   costUsd: number; // costo de los turnos del agente hasta el siguiente prompt
   tokens: number;
 }
 
-const MAX_PROMPT_CHARS = 400;
+/** HH:MM en `timeZone` (vacío = zona del sistema). Zona inválida => cae a UTC. */
+function hhmm(ts: string, timeZone?: string): string {
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return ts.slice(11, 16);
+  try {
+    return d.toLocaleTimeString("es-MX", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      ...(timeZone ? { timeZone } : {}),
+    });
+  } catch {
+    return ts.slice(11, 16); // timeZone inválida en config
+  }
+}
+
+const MAX_PROMPT_CHARS = 2000; // se puede expandir en la UI, así que cabe más
 
 /** Texto plano de un content de Claude Code (string o bloques). null si no es prompt real. */
 function claudeUserText(content: unknown): string | null {
@@ -136,7 +154,11 @@ function extractPrompts(raw: string): { ts: string; prompt: string }[] {
  * las respuestas hasta el siguiente prompt. Lee el transcript en SOLO LECTURA;
  * no persiste nada.
  */
-export async function getSessionTurns(db: DB, id: string): Promise<SessionTurn[] | null> {
+export async function getSessionTurns(
+  db: DB,
+  id: string,
+  timeZone?: string,
+): Promise<SessionTurn[] | null> {
   const row = db.prepare("SELECT source_path AS path FROM sessions WHERE id = ?").get(id) as
     | { path: string | null }
     | undefined;
@@ -163,7 +185,7 @@ export async function getSessionTurns(db: DB, id: string): Promise<SessionTurn[]
     const mine = events.filter((e) => e.ts >= p.ts && e.ts < next);
     return {
       ts: p.ts,
-      time: p.ts.slice(11, 16),
+      time: hhmm(p.ts, timeZone),
       prompt: p.prompt,
       costUsd: mine.reduce((n, e) => n + e.costUsd, 0),
       tokens: mine.reduce((n, e) => n + e.tokens, 0),

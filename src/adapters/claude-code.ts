@@ -106,8 +106,21 @@ export function parseSkillUsages(raw: string, fromLine = 0): SkillUsage[] {
     const ts = String(o.timestamp ?? "");
     if (o.type === "user") {
       const c = o.message?.content;
-      const text = typeof c === "string" ? c : JSON.stringify(c ?? "");
-      const mm = text.match(COMMAND_RE);
+      let text: string | null = null;
+      if (typeof c === "string") {
+        text = c;
+      } else if (Array.isArray(c)) {
+        // Los tool_result traen contenido de archivos: un README que documenta
+        // `<command-name>/x</command-name>` NO es un uso de skill. Antes se
+        // serializaba todo el content y esos textos contaban como usos falsos.
+        if (!c.some((b: any) => b?.type === "tool_result")) {
+          text = c
+            .filter((b: any) => b?.type === "text" && typeof b.text === "string")
+            .map((b: any) => b.text)
+            .join("\n");
+        }
+      }
+      const mm = text ? text.match(COMMAND_RE) : null;
       if (mm) out.push({ skill: mm[1], ts, kind: "command" });
     } else if (o.type === "assistant" && Array.isArray(o.message?.content)) {
       for (const b of o.message.content) {

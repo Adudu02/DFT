@@ -16,6 +16,7 @@ import { costForEvent } from "./lib/cost.js";
 import { loadConfig } from "./lib/config.js";
 import { loadPricing, getRate, UnknownModels, type Pricing } from "./lib/pricing.js";
 import { scanMemory } from "./lib/memory.js";
+import { dayInTz } from "./lib/time.js";
 
 export interface IngestSummary {
   files: number;
@@ -38,6 +39,7 @@ async function ingestFile(
   path: string,
   pricing: Pricing,
   unknown: UnknownModels,
+  timeZone?: string,
 ): Promise<{ inserted: number; skipped: number }> {
   const st = await stat(path);
   const sizeNow = st.size;
@@ -82,7 +84,7 @@ async function ingestFile(
         dedupKey,
         sessionId,
         event.ts,
-        event.day,
+        dayInTz(event.ts, timeZone),
         event.model,
         event.input,
         event.output,
@@ -132,7 +134,7 @@ async function ingestFile(
 /** Ingesta todos los transcripts descubiertos (todos los adapters) hacia `db`. */
 export async function ingestAll(
   db: DB,
-  opts: { projectsRoot?: string; codexRoot?: string; pricing?: Pricing; staleDays?: number } = {},
+  opts: { projectsRoot?: string; codexRoot?: string; pricing?: Pricing; staleDays?: number; timeZone?: string } = {},
 ): Promise<IngestSummary> {
   const pricing = opts.pricing ?? (await loadPricing());
   const unknown = new UnknownModels();
@@ -147,7 +149,7 @@ export async function ingestAll(
     const paths = await adapter.discover();
     files += paths.length;
     for (const path of paths) {
-      const { inserted, skipped } = await ingestFile(db, adapter, path, pricing, unknown);
+      const { inserted, skipped } = await ingestFile(db, adapter, path, pricing, unknown, opts.timeZone);
       if (inserted > 0) filesChanged++;
       eventsInserted += inserted;
       unparseableLines += skipped;
@@ -210,6 +212,7 @@ export async function rebuild(
     const roots = rootsFromConfig(config.agentPaths);
     return await ingestAll(db, {
       staleDays: config.staleDays,
+      timeZone: config.timeZone,
       projectsRoot: opts.projectsRoot ?? roots.projectsRoot,
       codexRoot: roots.codexRoot,
     });

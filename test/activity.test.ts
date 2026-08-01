@@ -93,7 +93,7 @@ describe("getSessionTurns — parsing real de prompts", () => {
   });
 
   it("extrae prompts (string y bloques), salta tool_result y limpia system-reminder", async () => {
-    const turns = (await getSessionTurns(db2, "prompts"))!;
+    const turns = (await getSessionTurns(db2, "prompts", "UTC"))!; // UTC explícito: no depender de la máquina
     expect(turns).toHaveLength(2); // el tool_result no cuenta como prompt
     expect(turns[0].prompt).toBe("arregla el parser de costos");
     expect(turns[0].time).toBe("09:15");
@@ -102,8 +102,53 @@ describe("getSessionTurns — parsing real de prompts", () => {
   });
 
   it("atribuye el costo de cada respuesta a su prompt", async () => {
-    const turns = (await getSessionTurns(db2, "prompts"))!;
+    const turns = (await getSessionTurns(db2, "prompts", "UTC"))!; // UTC explícito: no depender de la máquina
     expect(turns[0].costUsd).toBeCloseTo(5.0, 6); // 1M input opus @ $5/M = $5
     expect(turns[1].costUsd).toBeCloseTo(2.0, 6); // 2M input haiku @ $1/M = $2
+  });
+});
+
+describe("getSessionTurns — zona horaria configurable", () => {
+  it("formatea HH:MM en la zona pedida (America/Merida = UTC-6)", async () => {
+    // el fixture tiene un prompt a las 09:15Z => 03:15 en Mérida
+    const tmp3 = mkdtempSync(join(tmpdir(), "motor-tz-"));
+    mkdirSync(join(tmp3, "projT"), { recursive: true });
+    copyFileSync(fx("prompts.jsonl"), join(tmp3, "projT", "prompts.jsonl"));
+    const db3 = openDb(join(tmp3, "motor.db"));
+    await ingestAll(db3, { projectsRoot: tmp3, pricing: await loadPricing() });
+
+    const merida = (await getSessionTurns(db3, "prompts", "America/Merida"))!;
+    expect(merida[0].time).toBe("03:15");
+    const utc = (await getSessionTurns(db3, "prompts", "UTC"))!;
+    expect(utc[0].time).toBe("09:15");
+    // zona inválida no rompe: cae al slice UTC
+    const bad = (await getSessionTurns(db3, "prompts", "Nope/Nope"))!;
+    expect(bad[0].time).toBe("09:15");
+
+    db3.close();
+    rmSync(tmp3, { recursive: true, force: true });
+  });
+});
+
+describe("día calendario en la zona del usuario (no UTC)", () => {
+  it("un evento nocturno cae en el día LOCAL, no en el día UTC siguiente", async () => {
+    const { dayInTz } = await import("../src/lib/time.js");
+    // 2026-08-01T03:58Z = 2026-07-31 21:58 en Mérida (UTC-6)
+    expect(dayInTz("2026-08-01T03:58:00.000Z", "America/Merida")).toBe("2026-07-31");
+    expect(dayInTz("2026-08-01T03:58:00.000Z", "UTC")).toBe("2026-08-01");
+    expect(dayInTz("2026-08-01T03:58:00.000Z", "Nope/Nope")).toBe("2026-08-01"); // zona inválida => UTC
+  });
+
+  it("la ingesta guarda el día ya convertido a la zona configurada", async () => {
+    const tmp4 = mkdtempSync(join(tmpdir(), "motor-day-"));
+    mkdirSync(join(tmp4, "projD"), { recursive: true });
+    copyFileSync(fx("prompts.jsonl"), join(tmp4, "projD", "prompts.jsonl"));
+    const db4 = openDb(join(tmp4, "motor.db"));
+    // el fixture tiene un evento 2026-07-05T09:15:30Z => 03:15 del 07-05 en Mérida
+    await ingestAll(db4, { projectsRoot: tmp4, pricing: await loadPricing(), timeZone: "America/Merida" });
+    const days = (db4.prepare("SELECT DISTINCT day FROM usage_events ORDER BY day").all() as { day: string }[]).map((r) => r.day);
+    expect(days).toEqual(["2026-07-05"]);
+    db4.close();
+    rmSync(tmp4, { recursive: true, force: true });
   });
 });

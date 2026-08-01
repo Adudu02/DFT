@@ -3,5 +3,6 @@
   "staleDays": 30,
   "minutesPerUseDefault": 0,
   "minutesPerUse": {},
-  "agentPaths": {}
+  "agentPaths": {},
+  "timeZone": "America/Merida"
 }
