@@ -97,7 +97,7 @@ function hhmm(ts: string, timeZone?: string): string {
   }
 }
 
-const MAX_PROMPT_CHARS = 400;
+const MAX_PROMPT_CHARS = 2000; // se puede expandir en la UI, así que cabe más
 
 /** Texto plano de un content de Claude Code (string o bloques). null si no es prompt real. */
 function claudeUserText(content: unknown): string | null {
