@@ -15,6 +15,7 @@ export interface Config {
   minutesPerUseDefault: number;
   minutesPerUse: Record<string, number>;
   agentPaths: Record<string, string>;
+  timeZone: string; // IANA, ej. "America/Merida". Vacío = zona del sistema.
   waste: WasteThresholds;
 }
 
@@ -24,6 +25,7 @@ export const DEFAULT_CONFIG: Config = {
   minutesPerUseDefault: 0,
   minutesPerUse: {},
   agentPaths: {},
+  timeZone: "",
   waste: { ...DEFAULT_WASTE },
 };
 

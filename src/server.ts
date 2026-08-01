@@ -44,7 +44,7 @@ export async function buildServer() {
 
   app.get("/api/memory", async () => scanMemory(undefined, { staleDays: config.staleDays }));
 
-  app.get("/api/activity", async () => getActivity(db));
+  app.get("/api/activity", async () => getActivity(db, config.timeZone));
 
   app.get("/api/waste", async () => getWaste(db, pricing, config.waste));
 
@@ -60,7 +60,7 @@ export async function buildServer() {
 
   app.get("/api/session/:id/turns", async (req, reply) => {
     const { id } = req.params as { id: string };
-    const turns = await getSessionTurns(db, id);
+    const turns = await getSessionTurns(db, id, config.timeZone);
     if (turns === null) {
       reply.code(404);
       return { error: "sesión no encontrada" };
@@ -75,6 +75,7 @@ export async function buildServer() {
     const s = await ingestAll(db, {
       pricing,
       staleDays: config.staleDays,
+      timeZone: config.timeZone,
       ...rootsFromConfig(config.agentPaths),
     });
     return { ...s, durationMs: Date.now() - t0, at: new Date().toISOString() };
