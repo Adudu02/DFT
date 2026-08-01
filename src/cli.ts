@@ -1,11 +1,14 @@
 /**
- * CLI Fase 1: descubre transcripts de Claude Code (SOLO LECTURA), agrega por
- * dia/modelo e imprime la tabla de gasto "equivalente API" (PLAN §2, §6-F1).
+ * CLI: descubre transcripts de TODOS los agentes (Claude Code + Codex, SOLO
+ * LECTURA), agrega por dia/modelo e imprime la tabla de gasto "equivalente API".
  *
- *   npm run cli            # usa ~/.claude/projects
- *   npm run cli -- <root>  # usa otra raiz de projects
+ *   pnpm cli            # usa las rutas por defecto / config.agentPaths
+ *   pnpm cli -- <root>  # sobreescribe la raiz de projects de Claude Code
+ *   pnpm cli -- --waste # imprime dónde se fugan tokens (todos los agentes)
  */
-import { ClaudeCodeAdapter, defaultProjectsRoot } from "./adapters/claude-code.js";
+import { ClaudeCodeAdapter } from "./adapters/claude-code.js";
+import { CodexAdapter } from "./adapters/codex.js";
+import { rootsFromConfig } from "./adapters/registry.js";
 import { loadPricing } from "./lib/pricing.js";
 import { aggregate, type Row } from "./lib/aggregate.js";
 import { openDb, defaultDbPath } from "./lib/db.js";
@@ -13,6 +16,25 @@ import { ingestAll } from "./ingest.js";
 import { loadConfig } from "./lib/config.js";
 import { getWaste, type WasteFinding } from "./lib/waste.js";
 import type { NormalizedSession } from "./adapters/types.js";
+
+interface Adapter {
+  discoverSessions(): Promise<string[]>;
+  parseSession(path: string): Promise<NormalizedSession>;
+}
+
+/** Descubre y parsea todas las sesiones de un adapter (errores por archivo se avisan). */
+async function collectSessions(adapter: Adapter): Promise<{ sessions: NormalizedSession[]; files: number }> {
+  const paths = await adapter.discoverSessions();
+  const sessions: NormalizedSession[] = [];
+  for (const p of paths) {
+    try {
+      sessions.push(await adapter.parseSession(p));
+    } catch (err) {
+      console.error(`! no se pudo parsear ${p}: ${(err as Error).message}`);
+    }
+  }
+  return { sessions, files: paths.length };
+}
 
 function fmtInt(n: number): string {
   return n.toLocaleString("en-US");
@@ -78,13 +100,13 @@ function printWasteFinding(f: WasteFinding): void {
   console.log(`  ${f.detail}`);
 }
 
-/** F-waste: abre la DB (cache), ingesta e imprime dónde se fugan tokens. */
-async function runWaste(root: string): Promise<void> {
+/** F-waste: abre la DB (cache), ingesta TODOS los agentes e imprime las fugas. */
+async function runWaste(roots: { projectsRoot?: string; codexRoot: string }): Promise<void> {
   const pricing = await loadPricing();
   const config = await loadConfig();
   const db = openDb(defaultDbPath());
   try {
-    await ingestAll(db, { projectsRoot: root, pricing, staleDays: config.staleDays });
+    await ingestAll(db, { ...roots, pricing, staleDays: config.staleDays });
     const { findings, totalEstUsd } = getWaste(db, pricing, config.waste);
     if (findings.length === 0) {
       console.log("Sin fugas detectadas con los umbrales actuales (data/config.json → waste).");
@@ -103,28 +125,28 @@ async function runWaste(root: string): Promise<void> {
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const wasteMode = args.includes("--waste");
-  const root = args.find((a) => !a.startsWith("--")) ?? defaultProjectsRoot();
+  const rootArg = args.find((a) => !a.startsWith("--"));
 
-  if (wasteMode) return runWaste(root);
+  // Rutas: arg posicional sobreescribe la de Claude Code; el resto sale de
+  // config.agentPaths (con defaults). Codex siempre incluido.
+  const config = await loadConfig();
+  const roots = rootsFromConfig(config.agentPaths);
+  const claudeRoot = rootArg ?? roots.projectsRoot;
 
-  const adapter = new ClaudeCodeAdapter(root);
+  if (wasteMode) return runWaste({ projectsRoot: claudeRoot, codexRoot: roots.codexRoot });
+
   const pricing = await loadPricing();
-
-  const paths = await adapter.discoverSessions();
-  const sessions: NormalizedSession[] = [];
-  for (const p of paths) {
-    try {
-      sessions.push(await adapter.parseSession(p));
-    } catch (err) {
-      console.error(`! no se pudo parsear ${p}: ${(err as Error).message}`);
-    }
-  }
+  const claude = await collectSessions(new ClaudeCodeAdapter(claudeRoot));
+  const codex = await collectSessions(new CodexAdapter(roots.codexRoot));
+  const sessions = [...claude.sessions, ...codex.sessions];
+  const files = claude.files + codex.files;
 
   const { rows, total, unknownModels } = aggregate(sessions, pricing);
 
   const eventCount = sessions.reduce((n, s) => n + s.events.length, 0);
   console.log(
-    `Transcripts: ${paths.length} archivos · ${sessions.length} sesiones · ${eventCount} eventos de uso`,
+    `Transcripts: ${files} archivos · ${sessions.length} sesiones · ${eventCount} eventos de uso` +
+      ` (claude-code: ${claude.files} · codex: ${codex.files})`,
   );
   console.log("Costos = equivalente API (tarifa medida; no lo que pagas por suscripcion)\n");
 

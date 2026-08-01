@@ -4,8 +4,8 @@
  * parsers/heurísticas que fallaron y añadir tests. Las fuentes jamás se tocan:
  * lo único que mejora es el código del dashboard.
  *
- *   npm run improve          # lanza Claude Code con el prompt
- *   npm run improve -- --dry # solo imprime el prompt (no lanza nada)
+ *   pnpm improve          # lanza Claude Code con el prompt
+ *   pnpm improve -- --dry # solo imprime el prompt (no lanza nada)
  */
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -33,13 +33,13 @@ function buildPrompt(reportPath: string, r: IngestReport): string {
     "1. Diagnostica la causa de cada hallazgo (mira src/adapters/claude-code.ts y src/lib/).",
     "2. Corrige el código para cubrir esos casos.",
     "3. Añade tests en test/ (con fixtures anonimizados si hace falta) que cubran los casos nuevos.",
-    "4. Corre `npm test` y `npm run typecheck` y deja todo en verde.",
+    "4. Corre `pnpm test` y `pnpm typecheck` y deja todo en verde.",
   ].join("\n");
 }
 
 const report = await latestReport();
 if (!report) {
-  console.error("No hay reportes en ./data/reports. Corre primero `npm run rebuild` o `npm run serve`.");
+  console.error("No hay reportes en ./data/reports. Corre primero `pnpm rebuild` o `pnpm serve`.");
   process.exit(1);
 }
 
@@ -63,7 +63,7 @@ child.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "ENOENT") {
     console.error(
       "\nNo se encontró el binario `claude` en el PATH. Copia el prompt de arriba y córrelo manualmente,\n" +
-        "o instala Claude Code. (Usa `npm run improve -- --dry` para solo ver el prompt.)",
+        "o instala Claude Code. (Usa `pnpm improve -- --dry` para solo ver el prompt.)",
     );
     process.exit(127);
   }

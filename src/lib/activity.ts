@@ -1,7 +1,12 @@
 /**
  * Página Actividad (PLAN §4.4): timeline de sesiones por día (según ended_at) y
  * drill-down por sesión con desglose de tokens/costo por modelo.
+ *
+ * PRIVACIDAD: los prompts NO se guardan en la DB. `getSessionTurns` los lee del
+ * transcript original (solo lectura) en el momento de la consulta y los devuelve
+ * sin persistirlos — la garantía "la DB solo guarda métricas" sigue intacta.
  */
+import { readFileRO } from "./fs-readonly.js";
 import type { DB } from "./db.js";
 
 export interface ActivitySession {
@@ -64,6 +69,106 @@ export function getActivity(db: DB): ActivityDay[] {
     d.sessions.push({ ...r, models: r.models ? r.models.split(",") : [] });
   }
   return [...byDay.values()].sort((a, b) => b.day.localeCompare(a.day));
+}
+
+export interface SessionTurn {
+  ts: string; // ISO del prompt
+  time: string; // HH:MM (hora local del transcript, tal cual viene el ISO en UTC)
+  prompt: string;
+  costUsd: number; // costo de los turnos del agente hasta el siguiente prompt
+  tokens: number;
+}
+
+const MAX_PROMPT_CHARS = 400;
+
+/** Texto plano de un content de Claude Code (string o bloques). null si no es prompt real. */
+function claudeUserText(content: unknown): string | null {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return null;
+  // Los tool_result llegan como type "user" pero no son algo que el usuario escribió.
+  if (content.some((b: any) => b?.type === "tool_result")) return null;
+  const text = content
+    .filter((b: any) => b?.type === "text" && typeof b.text === "string")
+    .map((b: any) => b.text)
+    .join("\n");
+  return text || null;
+}
+
+/** Limpia envoltorios (system-reminder, command wrappers) y recorta. */
+function cleanPrompt(raw: string): string {
+  const t = raw
+    .replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, "")
+    .replace(/<local-command-[\s\S]*?>[\s\S]*?<\/local-command-[^>]*>/g, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return t.length > MAX_PROMPT_CHARS ? t.slice(0, MAX_PROMPT_CHARS) + "…" : t;
+}
+
+/** Prompts del usuario en un transcript (Claude Code o Codex), en orden. */
+function extractPrompts(raw: string): { ts: string; prompt: string }[] {
+  const out: { ts: string; prompt: string }[] = [];
+  for (const line of raw.split("\n")) {
+    const t = line.trim();
+    if (!t) continue;
+    let o: any;
+    try {
+      o = JSON.parse(t);
+    } catch {
+      continue;
+    }
+    let text: string | null = null;
+    if (o.type === "user") {
+      text = claudeUserText(o.message?.content); // Claude Code
+    } else if (o.type === "event_msg" && o.payload?.type === "user_message") {
+      text = typeof o.payload.message === "string" ? o.payload.message : null; // Codex
+    }
+    if (!text) continue;
+    const prompt = cleanPrompt(text);
+    if (!prompt) continue;
+    out.push({ ts: String(o.timestamp ?? ""), prompt });
+  }
+  return out;
+}
+
+/**
+ * Turnos de una sesión: cada prompt del usuario con su hora y lo que costaron
+ * las respuestas hasta el siguiente prompt. Lee el transcript en SOLO LECTURA;
+ * no persiste nada.
+ */
+export async function getSessionTurns(db: DB, id: string): Promise<SessionTurn[] | null> {
+  const row = db.prepare("SELECT source_path AS path FROM sessions WHERE id = ?").get(id) as
+    | { path: string | null }
+    | undefined;
+  if (!row) return null;
+  if (!row.path) return []; // sesión ingerida antes de guardar la ruta => rebuild
+
+  let raw: string;
+  try {
+    raw = await readFileRO(row.path);
+  } catch {
+    return []; // el transcript ya no está donde estaba
+  }
+
+  const prompts = extractPrompts(raw);
+  if (prompts.length === 0) return [];
+
+  const events = db
+    .prepare("SELECT ts, cost_usd AS costUsd, input_tokens + output_tokens + cache_write_tokens + cache_read_tokens AS tokens FROM usage_events WHERE session_id = ? ORDER BY ts")
+    .all(id) as { ts: string; costUsd: number; tokens: number }[];
+
+  // Cada evento se atribuye al último prompt anterior a él.
+  return prompts.map((p, i) => {
+    const next = prompts[i + 1]?.ts ?? "￿";
+    const mine = events.filter((e) => e.ts >= p.ts && e.ts < next);
+    return {
+      ts: p.ts,
+      time: p.ts.slice(11, 16),
+      prompt: p.prompt,
+      costUsd: mine.reduce((n, e) => n + e.costUsd, 0),
+      tokens: mine.reduce((n, e) => n + e.tokens, 0),
+    };
+  });
 }
 
 export function getSessionDetail(db: DB, id: string): SessionDetail | null {

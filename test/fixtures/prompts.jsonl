@@ -1,0 +1,5 @@
+{"type":"user","timestamp":"2026-07-05T09:15:00.000Z","sessionId":"prompts","message":{"role":"user","content":"arregla el parser de costos"}}
+{"type":"assistant","timestamp":"2026-07-05T09:15:30.000Z","sessionId":"prompts","requestId":"r1","message":{"id":"m1","model":"claude-opus-4-8","role":"assistant","usage":{"input_tokens":1000000,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}
+{"type":"user","timestamp":"2026-07-05T10:42:00.000Z","sessionId":"prompts","message":{"role":"user","content":[{"type":"tool_result","content":"salida de herramienta"}]}}
+{"type":"user","timestamp":"2026-07-05T11:07:00.000Z","sessionId":"prompts","message":{"role":"user","content":[{"type":"text","text":"ahora corre los tests <system-reminder>ignorame</system-reminder>"}]}}
+{"type":"assistant","timestamp":"2026-07-05T11:07:20.000Z","sessionId":"prompts","requestId":"r2","message":{"id":"m2","model":"claude-haiku-4-5","role":"assistant","usage":{"input_tokens":2000000,"output_tokens":0,"cache_creation_input_tokens":0,"cache_read_input_tokens":0}}}

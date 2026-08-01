@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { extractUsageEvents } from "../src/adapters/claude-code.js";
+import { CodexAdapter } from "../src/adapters/codex.js";
 import { aggregate } from "../src/lib/aggregate.js";
 import { loadPricing, type Pricing } from "../src/lib/pricing.js";
 import type { NormalizedSession } from "../src/adapters/types.js";
@@ -64,5 +65,15 @@ describe("aggregate — tabla gasto/modelo/dia", () => {
     const { total, unknownModels } = aggregate(sessions, pricing);
     expect(total.costUsd).toBeGreaterThan(0);
     expect(unknownModels).toEqual([]);
+  });
+
+  // Regresión QA: la tabla del CLI debe incluir TODOS los agentes, no solo Claude.
+  it("agrega Claude + Codex juntos (modelos de ambos aparecen en la tabla)", async () => {
+    const codex = await new CodexAdapter().parseSession(join(here, "fixtures", "codex-rollout.jsonl"));
+    const sessions = [sessionFrom("deterministic", read("deterministic.jsonl")), codex];
+    const { rows } = aggregate(sessions, pricing);
+    const models = new Set(rows.map((r) => r.model));
+    expect(models.has("claude-opus-4-8")).toBe(true); // Claude
+    expect(models.has("gpt-5.5")).toBe(true); // Codex
   });
 });

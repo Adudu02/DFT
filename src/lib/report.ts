@@ -2,7 +2,7 @@
  * Reporte de auto-mejora (PLAN §5). Al final de cada ingesta REAL (rebuild /
  * serve) se escribe ./data/reports/run-<ts>.json con lo que falló o quedó sin
  * cubrir: líneas no parseables, modelos sin tarifa, adapters sin datos y
- * tiempos. `npm run improve` lee el último y corrige el código del dashboard
+ * tiempos. `pnpm improve` lee el último y corrige el código del dashboard
  * (nunca las fuentes).
  */
 import { mkdir, writeFile, readdir } from "node:fs/promises";

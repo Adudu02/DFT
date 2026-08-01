@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
   LineChart,
   Line,
@@ -88,6 +88,13 @@ interface SessionDetail {
   totalCostUsd: number;
   models: { model: string; input: number; output: number; cacheWrite: number; cacheRead: number; costUsd: number }[];
 }
+interface SessionTurn {
+  ts: string;
+  time: string; // HH:MM
+  prompt: string;
+  costUsd: number;
+  tokens: number;
+}
 interface WasteThresholds {
   minCacheRatio: number;
   minInputTokens: number;
@@ -134,11 +141,42 @@ const usd = (n: number) => "$" + (n ?? 0).toFixed(2);
 const compact = (n: number) =>
   n >= 1e6 ? (n / 1e6).toFixed(1) + "M" : n >= 1e3 ? (n / 1e3).toFixed(1) + "k" : String(n ?? 0);
 const pct = (n: number) => (n * 100).toFixed(0) + "%";
+/** HH:MM en la zona horaria del navegador (los ts del transcript vienen en UTC). */
+const hhmm = (ts: string) => {
+  const d = new Date(ts);
+  return isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+};
 const AMBER = ["#ffb000", "#b87a00", "#e5533c", "#7dd35f", "#8a7a55", "#c9922e", "#5f8fd3"];
+
+// ── refresco global ──────────────────────────────────────────────────────────
+// Un "tick" externo al que se suscriben todos los useApi: al incrementarlo, cada
+// panel vuelve a pedir sus datos sin recargar la página.
+let tick = 0;
+const tickListeners = new Set<() => void>();
+const subscribeTick = (l: () => void) => {
+  tickListeners.add(l);
+  return () => void tickListeners.delete(l);
+};
+const getTick = () => tick;
+function bumpTick() {
+  tick++;
+  for (const l of tickListeners) l();
+}
+
+/** Reingesta incremental en el servidor y refresca todos los paneles. */
+export async function refreshAll(): Promise<void> {
+  try {
+    await fetch("/api/refresh", { method: "POST" });
+  } catch {
+    // si el servidor no responde, igual reintentamos el fetch de datos
+  }
+  bumpTick();
+}
 
 function useApi<T>(path: string, reloadKey = 0) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const globalTick = useSyncExternalStore(subscribeTick, getTick, getTick);
   useEffect(() => {
     let alive = true;
     setError(null);
@@ -149,7 +187,7 @@ function useApi<T>(path: string, reloadKey = 0) {
     return () => {
       alive = false;
     };
-  }, [path, reloadKey]);
+  }, [path, reloadKey, globalTick]);
   return { data, error };
 }
 
@@ -503,6 +541,7 @@ function Actividad() {
 
 function SessionDrill({ id }: { id: string }) {
   const { data } = useApi<SessionDetail>(`/api/session/${id}`);
+  const { data: turns } = useApi<SessionTurn[]>(`/api/session/${id}/turns`);
   if (!data) return <div className="text-xs text-term-muted mt-2">cargando…</div>;
   return (
     <div className="mt-2 ml-2 text-xs">
@@ -516,6 +555,33 @@ function SessionDrill({ id }: { id: string }) {
           </span>
         </div>
       ))}
+
+      {turns && turns.length > 0 && (
+        <div className="mt-3 border-t border-term-border/50 pt-2">
+          <div className="text-term-muted uppercase tracking-widest mb-1" style={{ fontSize: 10 }}>
+            Prompts ({turns.length}) · hora · costo
+          </div>
+          <div className="grid gap-1">
+            {turns.map((t, i) => (
+              <div key={i} className="flex gap-2 items-baseline">
+                <span className="text-term-green font-mono flex-none" title={t.ts}>
+                  {hhmm(t.ts) || t.time}
+                </span>
+                <span className="flex-1 truncate text-term-muted" title={t.prompt}>
+                  {t.prompt}
+                </span>
+                <span className="flex-none text-term-muted">{compact(t.tokens)}</span>
+                <span className="flex-none text-term-amber w-14 text-right">{usd(t.costUsd)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {turns && turns.length === 0 && (
+        <div className="mt-2 text-term-muted" style={{ fontSize: 10 }}>
+          (sin prompts legibles — si la sesión es vieja, corré Rebuild)
+        </div>
+      )}
     </div>
   );
 }
@@ -778,7 +844,9 @@ function Ayuda() {
           </li>
           <li>
             <span className="text-term-green">✓ Guarda solo métricas.</span> En <code>./data/motor.db</code>
-            van conteos de tokens, modelo y nombres de skills — no el texto de tus prompts.
+            van conteos de tokens, modelo y nombres de skills — <b>nunca</b> el texto de tus
+            prompts. El drill-down de Actividad sí los muestra: los lee del transcript original
+            (solo lectura) al consultar y no los persiste.
           </li>
           <li>
             <span className="text-term-green">✓ Sin exposición de red.</span> El servidor bindea solo a{" "}
@@ -823,6 +891,61 @@ const TABS = [
   ["Ayuda", Ayuda],
 ] as const;
 
+const REFRESH_MS = 30_000;
+
+/** Auto-refresco: reingesta incremental + refetch, sin recargar la página. */
+function RefreshControl() {
+  const [auto, setAuto] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [last, setLast] = useState<Date | null>(null);
+  const [ago, setAgo] = useState(0);
+
+  const run = async () => {
+    setBusy(true);
+    await refreshAll();
+    setLast(new Date());
+    setBusy(false);
+  };
+
+  useEffect(() => {
+    if (!auto) return;
+    const id = setInterval(run, REFRESH_MS);
+    return () => clearInterval(id);
+  }, [auto]);
+
+  // Contador "hace Xs" independiente del ciclo de refresco.
+  useEffect(() => {
+    const id = setInterval(() => setAgo((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [last]);
+  useEffect(() => setAgo(0), [last]);
+
+  return (
+    <div className="ml-auto flex items-center gap-2 text-xs">
+      <span className="text-term-muted">
+        {busy ? "actualizando…" : last ? `hace ${ago}s` : "sin refrescar"}
+      </span>
+      <button
+        onClick={run}
+        disabled={busy}
+        title="Reingerir transcripts y refrescar"
+        className="px-2 py-0.5 rounded border border-term-border text-term-amber hover:border-term-amber disabled:opacity-50"
+      >
+        ↻
+      </button>
+      <button
+        onClick={() => setAuto((a) => !a)}
+        title={`Auto-refresco cada ${REFRESH_MS / 1000}s`}
+        className={`px-2 py-0.5 rounded border ${
+          auto ? "bg-term-green text-black border-term-green" : "border-term-border text-term-muted"
+        }`}
+      >
+        AUTO
+      </button>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState(0);
   const Active = useMemo(() => TABS[tab][1], [tab]);
@@ -844,6 +967,7 @@ export default function App() {
             </button>
           ))}
         </nav>
+        <RefreshControl />
       </header>
       <main className="p-4 max-w-6xl mx-auto">
         <Active />

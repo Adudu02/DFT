@@ -101,15 +101,16 @@ async function ingestFile(
       .get(sessionId) as { turns: number; started: string | null; ended: string | null };
 
     db.prepare(`
-      INSERT INTO sessions (id, agent, project, started_at, ended_at, turns)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO sessions (id, agent, project, started_at, ended_at, turns, source_path)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         agent = excluded.agent,
         project = excluded.project,
         started_at = excluded.started_at,
         ended_at = excluded.ended_at,
-        turns = excluded.turns
-    `).run(sessionId, adapter.id, project, agg.started, agg.ended, agg.turns);
+        turns = excluded.turns,
+        source_path = excluded.source_path
+    `).run(sessionId, adapter.id, project, agg.started, agg.ended, agg.turns, path);
 
     db.prepare(`
       INSERT INTO ingest_offsets (path, size, mtime_ms, line_count, updated_at)
