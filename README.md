@@ -39,8 +39,10 @@ Ver la página **Ayuda** en la UI.
   árbol de fuentes antes/después de ingerir y exige que no cambie.
 - **Lista blanca de lectura.** Solo `rollout-*.jsonl`, `*.jsonl` y memoria `*.md`.
   Nunca abre `~/.codex/auth.json`, `.env` ni archivos de credenciales.
-- **Solo métricas.** `./data/motor.db` guarda conteos de tokens, modelo y nombres
-  de skills — no el texto de tus prompts.
+- **Solo métricas en la DB.** `./data/motor.db` guarda conteos de tokens, modelo y
+  nombres de skills — **nunca** el texto de tus prompts. El drill-down de Actividad
+  sí muestra tus prompts: los lee del transcript original (solo lectura) en el
+  momento de la consulta y no los persiste en ningún lado.
 - **Sin red.** El servidor bindea solo a `127.0.0.1:8081`, sin auth. No exponerlo
   a la LAN ni detrás de un proxy público.
 

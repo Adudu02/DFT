@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   project     TEXT NOT NULL,
   started_at  TEXT,
   ended_at    TEXT,
-  turns       INTEGER NOT NULL DEFAULT 0
+  turns       INTEGER NOT NULL DEFAULT 0,
+  source_path TEXT
 );
 CREATE TABLE IF NOT EXISTS usage_events (
   dedup_key           TEXT PRIMARY KEY,
@@ -68,6 +69,14 @@ export function openDb(path: string): DB {
   const db = new DatabaseSync(path);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec(SCHEMA);
+  // Migración para DBs creadas antes de source_path (CREATE TABLE IF NOT EXISTS
+  // no agrega columnas). La DB es caché reconstruible, pero esto evita exigir
+  // un rebuild manual.
+  try {
+    db.exec("ALTER TABLE sessions ADD COLUMN source_path TEXT");
+  } catch {
+    // ya existe
+  }
   return db;
 }
 

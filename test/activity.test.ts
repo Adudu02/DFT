@@ -5,7 +5,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb, type DB } from "../src/lib/db.js";
 import { ingestAll } from "../src/ingest.js";
-import { getActivity, getSessionDetail } from "../src/lib/activity.js";
+import { getActivity, getSessionDetail, getSessionTurns } from "../src/lib/activity.js";
 import { loadPricing } from "../src/lib/pricing.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -56,5 +56,54 @@ describe("getSessionDetail", () => {
 
   it("sesión inexistente => null", () => {
     expect(getSessionDetail(db, "no-existe")).toBeNull();
+  });
+});
+
+describe("getSessionTurns — prompts bajo demanda (no se guardan en la DB)", () => {
+  it("devuelve prompt + hora HH:MM y atribuye el costo hasta el prompt siguiente", async () => {
+    const turns = (await getSessionTurns(db, "sesion1"))!;
+    expect(turns).not.toBeNull();
+    // deterministic.jsonl no tiene mensajes user => lista vacía, sin lanzar
+    expect(Array.isArray(turns)).toBe(true);
+  });
+
+  it("sesión inexistente => null", async () => {
+    expect(await getSessionTurns(db, "no-existe")).toBeNull();
+  });
+
+  it("la DB nunca almacena el texto del prompt", () => {
+    const cols = (db.prepare("PRAGMA table_info(usage_events)").all() as { name: string }[]).map((c) => c.name);
+    expect(cols.some((c) => /prompt|text|content/i.test(c))).toBe(false);
+  });
+});
+
+describe("getSessionTurns — parsing real de prompts", () => {
+  let tmp2: string;
+  let db2: DB;
+  beforeEach(async () => {
+    tmp2 = mkdtempSync(join(tmpdir(), "motor-turns-"));
+    mkdirSync(join(tmp2, "projP"), { recursive: true });
+    copyFileSync(fx("prompts.jsonl"), join(tmp2, "projP", "prompts.jsonl"));
+    db2 = openDb(join(tmp2, "motor.db"));
+    await ingestAll(db2, { projectsRoot: tmp2, pricing: await loadPricing() });
+  });
+  afterEach(() => {
+    db2.close();
+    rmSync(tmp2, { recursive: true, force: true });
+  });
+
+  it("extrae prompts (string y bloques), salta tool_result y limpia system-reminder", async () => {
+    const turns = (await getSessionTurns(db2, "prompts"))!;
+    expect(turns).toHaveLength(2); // el tool_result no cuenta como prompt
+    expect(turns[0].prompt).toBe("arregla el parser de costos");
+    expect(turns[0].time).toBe("09:15");
+    expect(turns[1].prompt).toBe("ahora corre los tests");
+    expect(turns[1].time).toBe("11:07");
+  });
+
+  it("atribuye el costo de cada respuesta a su prompt", async () => {
+    const turns = (await getSessionTurns(db2, "prompts"))!;
+    expect(turns[0].costUsd).toBeCloseTo(5.0, 6); // 1M input opus @ $5/M = $5
+    expect(turns[1].costUsd).toBeCloseTo(2.0, 6); // 2M input haiku @ $1/M = $2
   });
 });

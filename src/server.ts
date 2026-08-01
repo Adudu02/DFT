@@ -16,7 +16,7 @@ import { getSummary } from "./lib/summary.js";
 import { loadConfig, saveConfig, type Config } from "./lib/config.js";
 import { discoverCatalog, getSkills } from "./lib/skills.js";
 import { scanMemory } from "./lib/memory.js";
-import { getActivity, getSessionDetail } from "./lib/activity.js";
+import { getActivity, getSessionDetail, getSessionTurns } from "./lib/activity.js";
 import { getWaste } from "./lib/waste.js";
 import { writeReport } from "./lib/report.js";
 
@@ -56,6 +56,28 @@ export async function buildServer() {
       return { error: "sesión no encontrada" };
     }
     return detail;
+  });
+
+  app.get("/api/session/:id/turns", async (req, reply) => {
+    const { id } = req.params as { id: string };
+    const turns = await getSessionTurns(db, id);
+    if (turns === null) {
+      reply.code(404);
+      return { error: "sesión no encontrada" };
+    }
+    return turns;
+  });
+
+  // Ingesta incremental bajo demanda (la usa el auto-refresh de la UI). Barata:
+  // salta archivos sin cambios por (size, mtime).
+  app.post("/api/refresh", async () => {
+    const t0 = Date.now();
+    const s = await ingestAll(db, {
+      pricing,
+      staleDays: config.staleDays,
+      ...rootsFromConfig(config.agentPaths),
+    });
+    return { ...s, durationMs: Date.now() - t0, at: new Date().toISOString() };
   });
 
   app.get("/api/config", async () => config);
@@ -105,7 +127,22 @@ async function main() {
       (summary.unknownModels.length ? ` · ${summary.unknownModels.length} modelos sin tarifa` : ""),
   );
 
-  await app.listen({ host: HOST, port: PORT });
+  try {
+    await app.listen({ host: HOST, port: PORT });
+  } catch (err) {
+    // El fallo más común al arrancar: ya hay un dashboard corriendo. El stack
+    // crudo de EADDRINUSE no dice qué hacer; esto sí.
+    if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
+      console.error(
+        `\n⚠ El puerto ${PORT} ya está en uso — probablemente el dashboard ya está corriendo.\n` +
+          `  Abrilo en http://${HOST}:${PORT}\n` +
+          `  Si quedó un proceso colgado, cerralo con:\n` +
+          `    kill $(ss -ltnp 'sport = :${PORT}' 2>/dev/null | grep -oP 'pid=\\K[0-9]+')\n`,
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
   console.log(`Motor agentico escuchando en http://${HOST}:${PORT}`);
 }
 
