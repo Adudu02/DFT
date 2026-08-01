@@ -10,6 +10,19 @@ Dashboard local de costos/actividad de agentes. Lee transcripts de Claude Code
 `'r'`, ver `src/lib/fs-readonly.ts`). Todo estado propio (DB, reportes) vive en
 `./data/`.
 
+## Inicio rápido (2 pasos)
+
+Requiere **Node.js ≥ 22.5** (por `node:sqlite`) y **pnpm** (`corepack enable pnpm`).
+
+```bash
+pnpm install
+pnpm start         # compila la UI si falta y sirve en http://127.0.0.1:8081
+```
+
+`pnpm start` se autorepara: si faltan dependencias o la UI compilada, las genera
+antes de arrancar (así corre igual en un clon recién bajado). En Linux/macOS,
+`./start.sh` hace lo mismo y además abre el navegador.
+
 ## Conectar agentes (local)
 
 Solo lectura, sin login ni claves. Al arrancar detecta automáticamente Claude Code
@@ -34,15 +47,15 @@ Ver la página **Ayuda** en la UI.
 ## Comandos
 
 ```bash
-npm install
-npm run cli        # F1: imprime tabla gasto/modelo/día desde ~/.claude/projects
-npm run rebuild    # borra ./data/motor.db y reingesta todo (cache reconstruible)
-npm run improve    # lee el último ./data/reports y lanza Claude Code para corregir (--dry: solo imprime)
-npm run serve      # API + UI en http://127.0.0.1:8081 (ingesta incremental al arrancar)
-npm run dev        # serve + Vite dev (frontend con HMR en :5173, proxy /api → :8081)
-npm run build:web  # build de producción del frontend a web/dist (lo sirve `serve`)
-npm test           # vitest
-npm run typecheck  # tsc --noEmit
+pnpm start          # inicio en un comando: instala/compila si falta y sirve
+pnpm cli            # F1: imprime tabla gasto/modelo/día (Claude Code + Codex)
+pnpm rebuild        # borra ./data/motor.db y reingesta todo (cache reconstruible)
+pnpm improve        # lee el último ./data/reports y lanza Claude Code para corregir (--dry: solo imprime)
+pnpm serve          # API + UI en http://127.0.0.1:8081 (ingesta incremental al arrancar)
+pnpm dev            # serve + Vite dev (frontend con HMR en :5173, proxy /api → :8081)
+pnpm build:web      # build de producción del frontend a web/dist (lo sirve `serve`)
+pnpm test           # vitest
+pnpm typecheck      # tsc --noEmit
 ```
 
 ## Estado
@@ -68,7 +81,7 @@ npm run typecheck  # tsc --noEmit
   hashea el árbol de fuentes (path·size·mtime) antes/después de un ciclo de
   ingesta y exige hash idéntico (criterio §7: fuentes intactas). Cada ingesta
   real (rebuild/serve) escribe `./data/reports/run-<ts>.json` con líneas no
-  parseables, modelos sin tarifa, adapters sin datos y tiempos. `npm run improve`
+  parseables, modelos sin tarifa, adapters sin datos y tiempos. `pnpm improve`
   lee el último reporte y lanza Claude Code **sobre este repo** (nunca sobre las
   fuentes) para corregir parsers/heurísticas y añadir tests; `--dry` solo imprime
   el prompt.
@@ -81,7 +94,7 @@ npm run typecheck  # tsc --noEmit
   a la diferencia de tarifa), *session-bloat* (UC3 — sesión enorme por turnos o
   tokens; informativo, recomienda partir) y *model-mismatch* (UC2 — modelo caro en
   turnos triviales; ahorro = costo real − costo a la tarifa del modelo destino).
-  Umbrales en `data/config.json → waste`. CLI: `npm run cli -- --waste`.
+  Umbrales en `data/config.json → waste`. CLI: `pnpm cli -- --waste`.
   *Tendencia (UC5)*: `trend` en `/api/waste` atribuye el ahorro estimado al día de
   cada sesión — derivado del estado actual, SIN snapshots (las sesiones viejas caen
   en su día, así se ve si el desperdicio baja con el tiempo). Gráfico en la página

@@ -5,10 +5,10 @@
 set -e
 cd "$(dirname "$0")"
 
-[ -d node_modules ] || npm install
-[ -d web/dist ] || npm run build:web
+[ -d node_modules ] || pnpm install
+[ -d web/dist ] || pnpm run build:web
 
-npm run serve &
+pnpm run serve &
 SERVER_PID=$!
 trap 'kill "$SERVER_PID" 2>/dev/null' EXIT
 

@@ -1,0 +1,6 @@
+allowBuilds:
+  esbuild: true
+# pnpm 11 movió estos settings desde package.json. No es un monorepo; el archivo
+# solo permite el build de esbuild (que Vite necesita), bloqueado por defecto.
+onlyBuiltDependencies:
+  - esbuild

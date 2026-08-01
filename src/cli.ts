@@ -2,9 +2,9 @@
  * CLI: descubre transcripts de TODOS los agentes (Claude Code + Codex, SOLO
  * LECTURA), agrega por dia/modelo e imprime la tabla de gasto "equivalente API".
  *
- *   npm run cli            # usa las rutas por defecto / config.agentPaths
- *   npm run cli -- <root>  # sobreescribe la raiz de projects de Claude Code
- *   npm run cli -- --waste # imprime dónde se fugan tokens (todos los agentes)
+ *   pnpm cli            # usa las rutas por defecto / config.agentPaths
+ *   pnpm cli -- <root>  # sobreescribe la raiz de projects de Claude Code
+ *   pnpm cli -- --waste # imprime dónde se fugan tokens (todos los agentes)
  */
 import { ClaudeCodeAdapter } from "./adapters/claude-code.js";
 import { CodexAdapter } from "./adapters/codex.js";
