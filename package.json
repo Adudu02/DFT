@@ -6,6 +6,7 @@
   "description": "Dashboard local (solo lectura) de costos/actividad de agentes: adapters Claude Code + Codex, motor de costos equiv-API, detección de fugas de tokens y ahorro, memoria y skills. Bindea solo a 127.0.0.1.",
   "scripts": {
     "start": "node scripts/start.mjs",
+    "launcher": "bash scripts/install-launcher.sh",
     "cli": "tsx src/cli.ts",
     "rebuild": "tsx src/rebuild.ts",
     "improve": "tsx src/improve.ts",
