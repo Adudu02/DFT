@@ -73,8 +73,8 @@ describe("getWaste — model-mismatch (UC2)", () => {
     const mm = findings.find((f) => f.kind === "model-mismatch" && f.sessionId === "mm");
     expect(mm).toBeDefined();
     expect(mm!.metrics.turns).toBe(3);
-    // opus 3×(1000*5+500*25)/1e6 = 0.0525 ; sonnet-5 3×(1000*3+500*15)/1e6 = 0.0315
-    expect(mm!.estUsd).toBeCloseTo(0.021, 6);
+    // opus 3×(1000*5+500*25)/1e6 = 0.0525 ; sonnet-5 3×(1000*2+500*10)/1e6 = 0.021
+    expect(mm!.estUsd).toBeCloseTo(0.0315, 6);
   });
 
   it("no señala si el modelo no es caro (sube el umbral de tarifa)", async () => {
