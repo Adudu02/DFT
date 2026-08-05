@@ -23,6 +23,7 @@ export interface SkillRow {
   savedUsd: number;
   minutesPerUse: number;
   inCatalog: boolean;
+  agents: { agent: string; uses: number; savedUsd: number }[];
 }
 
 // Comandos nativos de Claude Code => categoría "sistema" (no cuentan como skills).
@@ -85,6 +86,19 @@ export function getSkills(
     .all() as { skill: string; uses: number; lastUsed: string | null }[];
 
   const usesByName = new Map(used.map((r) => [r.skill, r]));
+  const usedByAgent = db
+    .prepare(`
+      SELECT su.skill, s.agent, COUNT(*) AS uses
+      FROM skills_usage su JOIN sessions s ON s.id = su.session_id
+      GROUP BY su.skill, s.agent
+    `)
+    .all() as { skill: string; agent: string; uses: number }[];
+  const agentsBySkill = new Map<string, { agent: string; uses: number }[]>();
+  for (const row of usedByAgent) {
+    const agents = agentsBySkill.get(row.skill) ?? [];
+    agents.push(row);
+    agentsBySkill.set(row.skill, agents);
+  }
   const names = new Set<string>([...usesByName.keys(), ...catalog.keys()]);
 
   const skills: SkillRow[] = [];
@@ -95,6 +109,9 @@ export function getSkills(
     const category = cat ? cat.category : BUILTIN.has(name) ? "sistema" : "otro";
     const minutesPerUse = config.minutesPerUse[name] ?? config.minutesPerUseDefault;
     const savedUsd = (uses * minutesPerUse * config.hourlyRate) / 60;
+    const agents = (agentsBySkill.get(name) ?? [])
+      .map((a) => ({ agent: a.agent, uses: a.uses, savedUsd: (a.uses * minutesPerUse * config.hourlyRate) / 60 }))
+      .sort((a, b) => b.uses - a.uses || a.agent.localeCompare(b.agent));
     skills.push({
       name,
       uses,
@@ -103,6 +120,7 @@ export function getSkills(
       savedUsd,
       minutesPerUse,
       inCatalog: !!cat,
+      agents,
     });
   }
 

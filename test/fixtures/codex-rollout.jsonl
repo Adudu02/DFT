@@ -4,3 +4,5 @@
 { linea corrupta que se debe saltar
 {"timestamp":"2026-07-25T10:00:03.000Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":2000,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":50,"total_tokens":2050}}}}
 {"timestamp":"2026-07-25T10:00:04.000Z","type":"event_msg","payload":{"type":"token_count","info":{"last_token_usage":{"input_tokens":0,"cached_input_tokens":0,"cache_write_input_tokens":0,"output_tokens":0,"total_tokens":0}}}}
+{"timestamp":"2026-07-25T10:00:05.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"/ponytail full"}]}}
+{"timestamp":"2026-07-25T10:00:06.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"hablemos de /ponytail sin invocarlo"}]}}

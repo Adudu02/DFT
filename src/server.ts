@@ -99,7 +99,7 @@ export async function buildServer() {
   });
 
   app.post("/api/rebuild", async () =>
-    ingestAll(db, { pricing, staleDays: config.staleDays, ...rootsFromConfig(config.agentPaths) }),
+    ingestAll(db, { pricing, staleDays: config.staleDays, reparseSkills: true, ...rootsFromConfig(config.agentPaths) }),
   );
 
   const here = dirname(fileURLToPath(import.meta.url));

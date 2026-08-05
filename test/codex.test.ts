@@ -3,10 +3,12 @@ import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, rmSync } from "node
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCodexMeta, parseCodexLines, discoverCodexSessions } from "../src/adapters/codex.js";
+import { parseCodexMeta, parseCodexLines, parseCodexSkills, discoverCodexSessions } from "../src/adapters/codex.js";
 import { openDb, type DB } from "../src/lib/db.js";
 import { ingestAll } from "../src/ingest.js";
 import { loadPricing } from "../src/lib/pricing.js";
+import { getSkills } from "../src/lib/skills.js";
+import { DEFAULT_CONFIG } from "../src/lib/config.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (name: string) => join(here, "fixtures", name);
@@ -31,6 +33,12 @@ describe("parseCodexMeta / parseCodexLines", () => {
     const { events } = parseCodexLines(raw, "codex-sess-1", 4); // desde la 2ª medición
     expect(events).toHaveLength(1);
     expect(events[0].event).toMatchObject({ model: "gpt-5.5", input: 2000 });
+  });
+
+  it("detecta comandos directos de usuario, no menciones en prosa", () => {
+    expect(parseCodexSkills(raw)).toEqual([
+      { skill: "ponytail", ts: "2026-07-25T10:00:05.000Z", kind: "command" },
+    ]);
   });
 });
 
@@ -74,5 +82,25 @@ describe("ingestAll con Codex (codexRoot explícito)", () => {
     const found = await discoverCodexSessions(join(tmp, "codex"));
     expect(found).toHaveLength(1);
     expect(found[0]).toContain("rollout-");
+  });
+
+  it("asocia el uso de skill con Codex y calcula su ahorro", () => {
+    const skill = getSkills(
+      db,
+      { ...DEFAULT_CONFIG, hourlyRate: 120, minutesPerUseDefault: 5 },
+      new Map(),
+    ).skills.find((s) => s.name === "ponytail");
+    expect(skill).toMatchObject({ uses: 1, savedUsd: 10, agents: [{ agent: "codex", uses: 1, savedUsd: 10 }] });
+  });
+
+  it("rebuild reanaliza los skills de archivos ya ingeridos", async () => {
+    db.exec("DELETE FROM skills_usage");
+    const summary = await ingestAll(db, {
+      projectsRoot: join(tmp, "claude"),
+      codexRoot: join(tmp, "codex"),
+      pricing: await loadPricing(),
+      reparseSkills: true,
+    });
+    expect(summary.skillsInserted).toBe(1);
   });
 });

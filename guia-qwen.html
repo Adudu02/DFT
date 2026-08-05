@@ -1,0 +1,684 @@
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --panel: #141210;
+    --border: #3a2f1a;
+    --amber: #ffb000;
+    --amber-dim: #b87a00;
+    --green: #7dd35f;
+    --red: #e5533c;
+    --blue: #5f8fd3;
+    --muted: #8a7a55;
+    --text: #e0d5c0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 { color: var(--amber); font-size: 1.8rem; margin-bottom: 0.3rem; }
+  h2 { color: var(--amber); font-size: 1.3rem; margin: 2rem 0 0.8rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+  h3 { color: var(--amber-dim); font-size: 1.05rem; margin: 1.2rem 0 0.5rem; }
+  .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1.2rem;
+    margin-bottom: 1rem;
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    text-transform: uppercase;
+  }
+  .badge-ok { background: var(--green); color: #000; }
+  .badge-warn { background: var(--amber); color: #000; }
+  .badge-err { background: var(--red); color: #fff; }
+  .badge-info { background: var(--blue); color: #000; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+  ul { padding-left: 1.2rem; margin: 0.4rem 0; }
+  li { margin-bottom: 0.3rem; }
+  code { background: #1a1710; color: var(--amber); padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
+  pre { background: #1a1710; border: 1px solid var(--border); border-radius: 4px; padding: 0.8rem; overflow-x: auto; font-size: 0.8rem; color: var(--text); margin: 0.5rem 0; white-space: pre-wrap; }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem; margin: 1rem 0; }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.8rem;
+    text-align: center;
+  }
+  .stat .num { font-size: 1.6rem; font-weight: bold; color: var(--amber); }
+  .stat .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+  .priority-high { border-left: 3px solid var(--red); padding-left: 0.8rem; }
+  .priority-med { border-left: 3px solid var(--amber); padding-left: 0.8rem; }
+  .priority-low { border-left: 3px solid var(--green); padding-left: 0.8rem; }
+  .toc { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.5rem; margin: 1rem 0; }
+  .toc a { color: var(--amber-dim); }
+  .toc ul { list-style: none; padding: 0; }
+  .toc li { margin: 0.2rem 0; }
+  table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.85rem; }
+  th { text-align: left; color: var(--amber); border-bottom: 1px solid var(--border); padding: 0.4rem; }
+  td { padding: 0.4rem; border-bottom: 1px solid #1a1710; }
+</style>
+
+<h1>▎Guia Qwen — Motor Agéntico</h1>
+<p class="subtitle">Análisis completo del proyecto · Agosto 2026 · v1.0.0</p>
+
+<div class="stat-grid">
+  <div class="stat"><div class="num">75</div><div class="label">Tests pasando</div></div>
+  <div class="stat"><div class="num">13</div><div class="label">Archivos de test</div></div>
+  <div class="stat"><div class="num">0</div><div class="label">Errores typecheck</div></div>
+  <div class="stat"><div class="num">~3,800</div><div class="label">Líneas de código</div></div>
+  <div class="stat"><div class="num">2</div><div class="label">Adapters activos</div></div>
+  <div class="stat"><div class="num">7</div><div class="label">Páginas frontend</div></div>
+</div>
+
+<div class="toc">
+  <strong style="color:var(--amber);">Índice</strong>
+  <ul>
+    <li>1. <a href="#overview">Resumen del Proyecto</a></li>
+    <li>2. <a href="#architecture">Arquitectura</a></li>
+    <li>3. <a href="#strengths">Fortalezas</a></li>
+    <li>4. <a href="#issues">Problemas Detectados</a></li>
+    <li>5. <a href="#missing">Lo Que Falta</a></li>
+    <li>6. <a href="#suggestions">Sugerencias de Mejora</a></li>
+    <li>7. <a href="#roadmap">Roadmap Recomendado</a></li>
+    <li>8. <a href="#files">Análisis por Archivo</a></li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════ RESUMEN ═══════════════════════ -->
+<h2 id="overview">1. Resumen del Proyecto</h2>
+
+<div class="panel">
+  <p><strong>Motor Agéntico</strong> es un dashboard local de costos y actividad para agentes de IA. Lee transcripts de <strong>Claude Code</strong> (<code>~/.claude/projects</code>) y <strong>Codex</strong> (<code>~/.codex</code>) en <strong>solo lectura</strong>, calcula el gasto "equivalente API" y señala fugas de tokens.</p>
+  <br>
+  <p><strong>Principio fundamental:</strong> Las fuentes (<code>~/.claude</code>, <code>~/.codex</code>) son SOLO LECTURA. Todo estado propio vive en <code>./data/</code>. No usa claves API, binda solo a <code>127.0.0.1:8081</code>.</p>
+</div>
+
+<p><strong>Tech stack:</strong></p>
+<ul>
+  <li><strong>Backend:</strong> Node.js ≥ 22.5, Fastify, SQLite (<code>node:sqlite</code> experimental)</li>
+  <li><strong>Frontend:</strong> React 18, Vite 5, Tailwind CSS 3, Recharts</li>
+  <li><strong>Tests:</strong> Vitest (75 tests, 13 suites)</li>
+  <li><strong>Package manager:</strong> pnpm 11</li>
+  <li><strong>Lenguaje:</strong> TypeScript 5.9 (strict mode)</li>
+</ul>
+
+<!-- ═══════════════════════ ARQUITECTURA ═══════════════════════ -->
+<h2 id="architecture">2. Arquitectura</h2>
+
+<div class="panel">
+<pre>
+┌─────────────────────────────────────────────────────────┐
+│                    FRONTEND (Vite/React)                  │
+│  Inicio │ Ahorro │ Skills │ Memoria │ Actividad │ Config │
+└────────────────────────┬────────────────────────────────┘
+                         │ /api/*
+┌────────────────────────┴────────────────────────────────┐
+│                   FASTIFY SERVER (:8081)                  │
+│  /api/summary · /api/skills · /api/memory · /api/activity│
+│  /api/waste · /api/session/:id · /api/config · /api/pricing│
+└──┬──────────┬──────────┬──────────┬─────────────────────┘
+   │          │          │          │
+   ▼          ▼          ▼          ▼
+┌──────┐ ┌────────┐ ┌────────┐ ┌──────────┐
+│ DB   │ │Ingest  │ │Pricing │ │  Config  │
+│SQLite│ │Pipeline│ │  JSON  │ │   JSON   │
+└──────┘ └───┬────┘ └────────┘ └──────────┘
+             │
+      ┌──────┴──────┐
+      ▼              ▼
+┌──────────┐  ┌──────────┐
+│ Claude   │  │  Codex   │
+│ Code     │  │ Adapter  │
+│ Adapter  │  │          │
+└────┬─────┘  └────┬─────┘
+     │              │
+     ▼              ▼
+~/.claude/     ~/.codex/
+ projects/     sessions/
+ (SOLO LECTURA)  (SOLO LECTURA)
+</pre>
+</div>
+
+<h3>Flujo de datos</h3>
+<ol>
+  <li><strong>Descubrimiento:</strong> Cada adapter encuentra sus transcripts (Claude: <code>*.jsonl</code>, Codex: <code>rollout-*.jsonl</code>)</li>
+  <li><strong>Ingesta incremental:</strong> Solo re-lee líneas nuevas (offset por archivo con size/mtime)</li>
+  <li><strong>Normalización:</strong> Cada adapter convierte a <code>UsageEvent</code> común</li>
+  <li><strong>Costo:</strong> Se calcula en ingesta con <code>costForEvent()</code> usando pricing.json</li>
+  <li><strong>DB:</strong> SQLite con WAL, tablas: sessions, usage_events, skills_usage, memory_nodes, ingest_offsets</li>
+  <li><strong>API:</strong> Endpoints leen de la DB y devuelven JSON</li>
+</ol>
+
+<!-- ═══════════════════════ FORTALEZAS ═══════════════════════ -->
+<h2 id="strengths">3. Fortalezas <span class="badge badge-ok">✔</span></h2>
+
+<div class="grid2">
+<div class="panel">
+<h3>Seguridad sólida</h3>
+<ul>
+  <li>Flag <code>'r'</code> en todas las lecturas de fuentes (<code>fs-readonly.ts</code>)</li>
+  <li>Lista blanca: solo <code>rollout-*.jsonl</code>, <code>*.jsonl</code>, <code>*.md</code></li>
+  <li>Nunca abre <code>auth.json</code>, <code>.env</code> ni credenciales</li>
+  <li>Bind exclusivo a <code>127.0.0.1</code></li>
+  <li>Test de integridad: hashea fuentes antes/después de ingesta</li>
+  <li>DB solo guarda métricas, nunca texto de prompts</li>
+</ul>
+</div>
+
+<div class="panel">
+<h3>Código bien estructurado</h3>
+<ul>
+  <li>Patrón adapter limpio — agregar un agente nuevo es implementar una interfaz</li>
+  <li>Separación clara: adapters / lib / server / cli</li>
+  <li>Tipado TypeScript strict sin errores</li>
+  <li>Comentarios explican el <em>por qué</em>, no el <em>qué</em></li>
+  <li>Dedup por PK en DB + dedup in-memory por archivo</li>
+</ul>
+</div>
+
+<div class="panel">
+<h3>Testing completo</h3>
+<ul>
+  <li>75 tests pasando en 13 suites</li>
+  <li>Fixtures anonimizados para Codex y Claude Code</li>
+  <li>Test de integridad (fuentes intactas)</li>
+  <li>Cobertura: adapters, ingest, costs, waste, skills, memory, activity, summary, CLI</li>
+</ul>
+</div>
+
+<div class="panel">
+<h3>UX pensada</h3>
+<ul>
+  <li>Tema terminal ámbar/negro coherente</li>
+  <li>Auto-refresco cada 30s con indicador visual</li>
+  <li>Auto-reparación al arrancar (<code>pnpm start</code>)</li>
+  <li>Lanzador de escritorio + autostart</li>
+  <li>Mensajes de error claros (EADDRINUSE, modelos sin tarifa)</li>
+</ul>
+</div>
+
+<div class="panel">
+<h3>Features avanzadas</h3>
+<ul>
+  <li>Detección de fugas de tokens (cache-miss, session-bloat, model-mismatch)</li>
+  <li>Grafo de memoria con layout por anillos</li>
+  <li>Sistema de auto-mejora (<code>pnpm improve</code>)</li>
+  <li>Reportes de ingesta para diagnóstico</li>
+  <li>Pricing editable en vivo con rebuild</li>
+</ul>
+</div>
+
+<div class="panel">
+<h3>Zero-dependency DB</h3>
+<ul>
+  <li>SQLite vía <code>node:sqlite</code> — sin bindings nativos</li>
+  <li>DB es caché reconstruible (se puede borrar y reingestar)</li>
+  <li>WAL mode para concurrencia de lectura</li>
+</ul>
+</div>
+</div>
+
+<!-- ═══════════════════════ PROBLEMAS ═══════════════════════ -->
+<h2 id="issues">4. Problemas Detectados</h2>
+
+<h3 class="priority-high">🔴 Alto — App.tsx es un monolito de 1002 líneas</h3>
+<div class="panel priority-high">
+  <p>Todo el frontend vive en un solo archivo: 7 páginas, tipos, helpers, hooks, componentes. Esto dificulta:</p>
+  <ul>
+    <li>Mantenimiento y navegación</li>
+    <li>Code-splitting (todo se carga en un bundle)</li>
+    <li>Testing de componentes individuales</li>
+    <li>Colaboración (conflictos de merge frecuentes)</li>
+  </ul>
+  <p><strong>Archivo:</strong> <code>web/src/App.tsx</code></p>
+</div>
+
+<h3 class="priority-high">🔴 Alto — Config.json no tiene el campo <code>waste</code></h3>
+<div class="panel priority-high">
+  <p><code>data/config.json</code> no incluye el campo <code>waste</code>. Aunque <code>loadConfig()</code> hace merge con defaults (y funciona), el usuario que edite la config desde la UI verá los campos de fugas pero al guardar se persistirá sin ellos si el merge no es correcto en <code>saveConfig</code>.</p>
+  <p><strong>Archivo:</strong> <code>data/config.json</code> + <code>src/lib/config.ts</code></p>
+  <p><strong>Impacto:</strong> Bajo (el merge lo resuelve), pero inconsistencia entre lo guardado y lo esperado.</p>
+</div>
+
+<h3 class="priority-med">🟡 Medio — node:sqlite es experimental</h3>
+<div class="panel priority-med">
+  <p>Se carga con <code>createRequire</code> para evitar el bundling, pero la API puede cambiar entre versiones de Node. Los warnings de <code>ExperimentalWarning</code> aparecen en cada test.</p>
+  <p><strong>Impacto:</strong> Funcional pero frágil ante upgrades de Node.</p>
+</div>
+
+<h3 class="priority-med">🟡 Medio — Sin validación de input en PUT /api/pricing</h3>
+<div class="panel priority-med">
+  <p>El endpoint acepta cualquier JSON y solo valida que tenga <code>models</code>. No valida que las tarifas sean números positivos, que los nombres de modelo sean válidos, etc. Un JSON mal formado puede corromper <code>pricing.json</code>.</p>
+  <p><strong>Archivo:</strong> <code>src/server.ts</code></p>
+</div>
+
+<h3 class="priority-med">🟡 Medio — Memoria: DELETE + INSERT en cada ingesta</h3>
+<div class="panel priority-med">
+  <p><code>refreshMemoryNodes()</code> borra todos los nodos y los reinserta en cada ingesta. Con muchos archivos de memoria esto es ineficiente. No hay incrementalidad para la memoria.</p>
+  <p><strong>Archivo:</strong> <code>src/ingest.ts</code></p>
+</div>
+
+<h3 class="priority-med">🟡 Medio — Import dinámico innecesario en CodexAdapter</h3>
+<div class="panel priority-med">
+  <p><code>CodexAdapter.parseSession()</code> usa <code>await import("../lib/fs-readonly.js")</code> en vez de usar el import estático del inicio del archivo. Es un dynamic import innecesario que añade latencia.</p>
+  <p><strong>Archivo:</strong> <code>src/adapters/codex.ts</code></p>
+</div>
+
+<h3 class="priority-low">🟢 Bajo — Reportes sin limpieza automática</h3>
+<div class="panel priority-low">
+  <p>Cada ingesta genera un <code>data/reports/run-&lt;ts&gt;.json</code>. No hay mecanismo de rotación o limpieza. Con el tiempo pueden acumularse cientos de archivos.</p>
+</div>
+
+<h3 class="priority-low">🟢 Bajo — Sin graceful shutdown para ingesta larga</h3>
+<div class="panel priority-low">
+  <p>Si el servidor se apaga durante una ingesta grande (rebuild con miles de sesiones), la transacción puede quedar a medias. El WAL de SQLite lo protege, pero no hay signal handler para cerrar la DB limpiamente.</p>
+</div>
+
+<!-- ═══════════════════════ LO QUE FALTA ═══════════════════════ -->
+<h2 id="missing">5. Lo Que Falta</h2>
+
+<table>
+  <thead>
+    <tr><th>Categoría</th><th>Feature</th><th>Prioridad</th><th>Complejidad</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Frontend</td><td>Componentes separados (romper App.tsx)</td><td><span class="badge badge-err">Alta</span></td><td>Media</td></tr>
+    <tr><td>Frontend</td><td>Paginación en /api/activity</td><td><span class="badge badge-warn">Media</span></td><td>Baja</td></tr>
+    <tr><td>Frontend</td><td>Exportar datos (CSV/JSON)</td><td><span class="badge badge-warn">Media</span></td><td>Baja</td></tr>
+    <tr><td>Frontend</td><td>Responsive móvil</td><td><span class="badge badge-warn">Media</span></td><td>Media</td></tr>
+    <tr><td>Frontend</td><td>Indicador de estado del servidor</td><td><span class="badge badge-info">Baja</span></td><td>Baja</td></tr>
+    <tr><td>Backend</td><td>Validación de input en endpoints PUT</td><td><span class="badge badge-warn">Media</span></td><td>Baja</td></tr>
+    <tr><td>Backend</td><td>Rate limiting (aunque sea localhost)</td><td><span class="badge badge-info">Baja</span></td><td>Baja</td></tr>
+    <tr><td>Backend</td><td>Logs estructurados (no solo console.log)</td><td><span class="badge badge-warn">Media</span></td><td>Baja</td></tr>
+    <tr><td>Backend</td><td>Señales SIGTERM/SIGINT para shutdown limpio</td><td><span class="badge badge-warn">Media</span></td><td>Baja</td></tr>
+    <tr><td>Adapters</td><td>Catálogo de skills para Codex</td><td><span class="badge badge-warn">Media</span></td><td>Media</td></tr>
+    <tr><td>Adapters</td><td>Soporte para nuevos agentes (Gemini, etc.)</td><td><span class="badge badge-info">Baja</span></td><td>Media</td></tr>
+    <tr><td>Infra</td><td>CI/CD (GitHub Actions)</td><td><span class="badge badge-warn">Media</span></td><td>Baja</td></tr>
+    <tr><td>Infra</td><td>Dockerfile</td><td><span class="badge badge-info">Baja</span></td><td>Baja</td></tr>
+    <tr><td>Infra</td><td>Lint (eslint/biome)</td><td><span class="badge badge-warn">Media</span></td><td>Baja</td></tr>
+    <tr><td>Datos</td><td>Rotación de reportes antiguos</td><td><span class="badge badge-info">Baja</span></td><td>Baja</td></tr>
+    <tr><td>Datos</td><td>Backup/export de la DB</td><td><span class="badge badge-info">Baja</span></td><td>Baja</td></tr>
+    <tr><td>UX</td><td>Buscador de sesiones/prompts</td><td><span class="badge badge-warn">Media</span></td><td>Media</td></tr>
+    <tr><td>UX</td><td>Notificaciones de modelos sin tarifa</td><td><span class="badge badge-info">Baja</span></td><td>Baja</td></tr>
+  </tbody>
+</table>
+
+<!-- ═══════════════════════ SUGERENCIAS ═══════════════════════ -->
+<h2 id="suggestions">6. Sugerencias de Mejora</h2>
+
+<h3>6.1. Romper el monolito del frontend</h3>
+<div class="panel">
+  <p><strong>Problema:</strong> <code>web/src/App.tsx</code> tiene 1002 líneas con 7 páginas, tipos, hooks y componentes.</p>
+  <p><strong>Solución propuesta:</strong></p>
+<pre>
+web/src/
+├── App.tsx          ← solo shell + tabs + router
+├── types.ts         ← interfaces compartidas
+├── hooks.ts         ← useApi, useRefresh
+├── components/
+│   ├── Panel.tsx
+│   ├── Loading.tsx
+│   ├── ErrorMsg.tsx
+│   └── Legend.tsx
+├── pages/
+│   ├── Inicio.tsx
+│   ├── Ahorro.tsx
+│   ├── Skills.tsx
+│   ├── Memoria.tsx
+│   ├── Actividad.tsx
+│   ├── Configuracion.tsx
+│   └── Ayuda.tsx
+└── utils.ts         ← fmt, compact, pct, usd
+</pre>
+</div>
+
+<h3>6.2. Agregar un linter</h3>
+<div class="panel">
+  <p>No hay eslint ni biome. Agregar <code>biome</code> (rápido, zero-config) para asegurar consistencia de estilo y detectar problemas comunes:</p>
+<pre>
+pnpm add -D @biomejs/biome
+pnpm biome init
+# En package.json:
+"lint": "biome check src/ test/ web/src/"
+</pre>
+</div>
+
+<h3>6.3. CI/CD con GitHub Actions</h3>
+<div class="panel">
+  <p>El proyecto tiene <code>.github/</code> pero no hay workflow de CI. Agregar:</p>
+<pre>
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build:web
+</pre>
+</div>
+
+<h3>6.4. Graceful shutdown</h3>
+<div class="panel">
+  <p>Agregar signal handlers en <code>server.ts</code>:</p>
+<pre>
+for (const sig of ['SIGTERM', 'SIGINT']) {
+  process.on(sig, async () => {
+    console.log(`\n${sig} — cerrando...`);
+    await app.close();
+    db.close();
+    process.exit(0);
+  });
+}
+</pre>
+</div>
+
+<h3>6.5. Validación de pricing</h3>
+<div class="panel">
+  <p>Antes de guardar pricing.json, validar:</p>
+  <ul>
+    <li>Cada modelo tiene <code>input</code> y <code>output</code> como números ≥ 0</li>
+    <li>No hay claves vacías</li>
+    <li>Estructura coincide con <code>Pricing</code> interface</li>
+  </ul>
+</div>
+
+<h3>6.6. Paginación en /api/activity</h3>
+<div class="panel">
+  <p>Con muchas sesiones, <code>getActivity()</code> devuelve todo sin paginar. Agregar <code>?page=1&limit=50</code> y un cursor basado en <code>ended_at</code>.</p>
+</div>
+
+<h3>6.7. Exportar datos</h3>
+<div class="panel">
+  <p>Agregar un endpoint <code>GET /api/export?format=csv|json</code> que exporte sessions + usage_events. Útil para análisis externo o backup.</p>
+</div>
+
+<h3>6.8. Buscador de sesiones</h3>
+<div class="panel">
+  <p>La página de Actividad muestra todas las sesiones por día. Agregar un buscador que filtre por proyecto, modelo, o texto del prompt (leyendo transcripts en demanda).</p>
+</div>
+
+<!-- ═══════════════════════ ROADMAP ═══════════════════════ -->
+<h2 id="roadmap">7. Roadmap Recomendado</h2>
+
+<div class="panel">
+  <h3>Fase 1 — Limpieza técnica <span class="badge badge-warn">1-2 días</span></h3>
+  <ul>
+    <li>☐ Romper App.tsx en componentes/páginas separadas</li>
+    <li>☐ Agregar biome + script de lint</li>
+    <li>☐ Agregar GitHub Actions CI</li>
+    <li>☐ Graceful shutdown en server.ts</li>
+    <li>☐ Fix: import dinámico innecesario en CodexAdapter</li>
+    <li>☐ Agregar waste a config.json por defecto</li>
+  </ul>
+</div>
+
+<div class="panel">
+  <h3>Fase 2 — Robustez <span class="badge badge-warn">2-3 días</span></h3>
+  <ul>
+    <li>☐ Validación de input en PUT /api/pricing y PUT /api/config</li>
+    <li>☐ Paginación en /api/activity</li>
+    <li>☐ Rotación de reportes (mantener últimos 30)</li>
+    <li>☐ Logs estructurados (pino o similar)</li>
+    <li>☐ Tests de integración para endpoints</li>
+    <li>☐ Evaluar migración de node:sqlite a better-sqlite3</li>
+  </ul>
+</div>
+
+<div class="panel">
+  <h3>Fase 3 — Features <span class="badge badge-info">3-5 días</span></h3>
+  <ul>
+    <li>☐ Exportar datos (CSV/JSON)</li>
+    <li>☐ Buscador de sesiones/prompts</li>
+    <li>☐ Catálogo de skills para Codex</li>
+    <li>☐ Responsive móvil</li>
+    <li>☐ Dockerfile</li>
+    <li>☐ Soporte para un tercer adapter (ej. Gemini)</li>
+  </ul>
+</div>
+
+<!-- ═══════════════════════ POR ARCHIVO ═══════════════════════ -->
+<h2 id="files">8. Análisis por Archivo</h2>
+
+<h3>Backend — src/</h3>
+<table>
+  <thead>
+    <tr><th>Archivo</th><th>Responsabilidad</th><th>Estado</th><th>Notas</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>server.ts</code></td>
+      <td>Fastify + rutas API</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Falta validación de input, graceful shutdown. Manejo de EADDRINUSE es bueno.</td>
+    </tr>
+    <tr>
+      <td><code>ingest.ts</code></td>
+      <td>Pipeline de ingesta incremental</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Offset por archivo con size/mtime. Transacciones con BEGIN/COMMIT. Memoria podría ser incremental.</td>
+    </tr>
+    <tr>
+      <td><code>cli.ts</code></td>
+      <td>CLI tabla de gasto + waste</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Modo --waste funciona. Formato de tabla limpio.</td>
+    </tr>
+    <tr>
+      <td><code>improve.ts</code></td>
+      <td>Auto-mejora con Claude Code</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Prompt bien construido. Modo --dry útil.</td>
+    </tr>
+    <tr>
+      <td><code>rebuild.ts</code></td>
+      <td>Borra DB y reingesta</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Limpia WAL/SHM. Usa config.agentPaths.</td>
+    </tr>
+    <tr>
+      <td><code>adapters/claude-code.ts</code></td>
+      <td>Parser de transcripts Claude</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Dedup robusto. Exclude &lt;synthetic&gt;. Skill detection con COMMAND_RE.</td>
+    </tr>
+    <tr>
+      <td><code>adapters/codex.ts</code></td>
+      <td>Parser de rollouts Codex</td>
+      <td><span class="badge badge-warn">OK</span></td>
+      <td>Import dinámico innecesario en parseSession. Por lo demás sólido.</td>
+    </tr>
+    <tr>
+      <td><code>adapters/registry.ts</code></td>
+      <td>Registro de adapters + ingesta</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Patrón limpio. Isolation de tests correcto.</td>
+    </tr>
+    <tr>
+      <td><code>adapters/types.ts</code></td>
+      <td>Interfaces compartidas</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>UsageEvent, NormalizedSession, SkillUsage.</td>
+    </tr>
+    <tr>
+      <td><code>lib/db.ts</code></td>
+      <td>SQLite schema + openDb</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Migración automática de source_path. WAL mode.</td>
+    </tr>
+    <tr>
+      <td><code>lib/cost.ts</code></td>
+      <td>Fórmula de costo</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Lineal, predecible. Modelo sin tarifa = 0.</td>
+    </tr>
+    <tr>
+      <td><code>lib/pricing.ts</code></td>
+      <td>Carga/guarda tarifas</td>
+      <td><span class="badge badge-warn">OK</span></td>
+      <td>Falta validación al guardar. UnknownModels es limpio.</td>
+    </tr>
+    <tr>
+      <td><code>lib/summary.ts</code></td>
+      <td>Resumen página Inicio</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>perAgentModels para donut filtrable. Racha calculada correctamente.</td>
+    </tr>
+    <tr>
+      <td><code>lib/waste.ts</code></td>
+      <td>Detección de fugas</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>3 UCs bien modeladas. Tendencia por día. Umbrales configurables.</td>
+    </tr>
+    <tr>
+      <td><code>lib/memory.ts</code></td>
+      <td>Grafo de memoria</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Parseo de frontmatter + wikilinks. Snapshot completo en cada ingesta.</td>
+    </tr>
+    <tr>
+      <td><code>lib/skills.ts</code></td>
+      <td>Catálogo + uso de skills</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>BUILTIN set evita contar comandos nativos. $ ahorrado configurable.</td>
+    </tr>
+    <tr>
+      <td><code>lib/activity.ts</code></td>
+      <td>Timeline + drill-down</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Prompts leídos en demanda (no persistidos). dayInTz correcto.</td>
+    </tr>
+    <tr>
+      <td><code>lib/config.ts</code></td>
+      <td>Config del usuario</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Merge con defaults robusto. Save parcial.</td>
+    </tr>
+    <tr>
+      <td><code>lib/report.ts</code></td>
+      <td>Reportes de ingesta</td>
+      <td><span class="badge badge-warn">OK</span></td>
+      <td>Falta rotación de reportes antiguos.</td>
+    </tr>
+    <tr>
+      <td><code>lib/fs-readonly.ts</code></td>
+      <td>Acceso RO a fuentes</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Flag 'r' garantiza no-escritura.</td>
+    </tr>
+    <tr>
+      <td><code>lib/time.ts</code></td>
+      <td>Timezone handling</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>dayInTz con fallback a UTC. en-CA para formato YYYY-MM-DD.</td>
+    </tr>
+    <tr>
+      <td><code>lib/aggregate.ts</code></td>
+      <td>Agregación CLI</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Por día+modelo. Usado solo por CLI.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Frontend — web/</h3>
+<table>
+  <thead>
+    <tr><th>Archivo</th><th>Estado</th><th>Notas</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>web/src/App.tsx</code></td>
+      <td><span class="badge badge-err">Monolito</span></td>
+      <td>1002 líneas. Necesita descomposición urgente.</td>
+    </tr>
+    <tr>
+      <td><code>web/src/main.tsx</code></td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Entry point estándar de React.</td>
+    </tr>
+    <tr>
+      <td><code>web/src/index.css</code></td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Tailwind + tema oscuro + scrollbar custom.</td>
+    </tr>
+    <tr>
+      <td><code>web/tailwind.config.js</code></td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Colores custom del tema terminal. Rutas absolutas.</td>
+    </tr>
+    <tr>
+      <td><code>web/vite.config.ts</code></td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Proxy /api → :8081 para dev. Clean outDir.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Tests — test/</h3>
+<table>
+  <thead>
+    <tr><th>Archivo</th><th>Tests</th><th>Cobertura</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>claude-code.test.ts</code></td><td>9</td><td>Parser, dedup, synthetic, skills</td></tr>
+    <tr><td><code>codex.test.ts</code></td><td>8</td><td>Parser, meta, skills, discover</td></tr>
+    <tr><td><code>ingest.test.ts</code></td><td>6</td><td>Incremental, reparse, multi-adapter</td></tr>
+    <tr><td><code>cost.test.ts</code></td><td>4</td><td>Fórmula, modelo desconocido</td></tr>
+    <tr><td><code>summary.test.ts</code></td><td>2</td><td>Resumen, ventana</td></tr>
+    <tr><td><code>waste.test.ts</code></td><td>7</td><td>3 UCs + tendencia + umbrales</td></tr>
+    <tr><td><code>skills.test.ts</code></td><td>10</td><td>Catálogo, uso, $ ahorrado, builtin</td></tr>
+    <tr><td><code>memory.test.ts</code></td><td>4</td><td>Grafo, wikilinks, obsolescencia</td></tr>
+    <tr><td><code>activity.test.ts</code></td><td>11</td><td>Timeline, drill-down, prompts, TZ</td></tr>
+    <tr><td><code>cli.test.ts</code></td><td>5</td><td>Tabla, waste mode, args</td></tr>
+    <tr><td><code>registry.test.ts</code></td><td>4</td><td>Adapters, roots, isolation</td></tr>
+    <tr><td><code>report.test.ts</code></td><td>4</td><td>Write, latest, findings</td></tr>
+    <tr><td><code>integrity.test.ts</code></td><td>1</td><td>Hash fuentes antes/después</td></tr>
+  </tbody>
+</table>
+
+<h3>Infraestructura</h3>
+<table>
+  <thead>
+    <tr><th>Archivo</th><th>Estado</th><th>Notas</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>start.sh</code></td><td><span class="badge badge-ok">Bien</span></td><td>Auto-reparación, espera health check</td></tr>
+    <tr><td><code>scripts/start.mjs</code></td><td><span class="badge badge-ok">Bien</span></td><td>Versión cross-platform de start.sh</td></tr>
+    <tr><td><code>scripts/install-launcher.sh</code></td><td><span class="badge badge-ok">Bien</span></td><td>Desktop entry + autostart</td></tr>
+    <tr><td><code>scripts/anonymize.mjs</code></td><td><span class="badge badge-ok">Bien</span></td><td>Anonimiza transcripts para fixtures</td></tr>
+    <tr><td><code>package.json</code></td><td><span class="badge badge-ok">Bien</span></td><td>Scripts claros. Deps mínimas.</td></tr>
+    <tr><td><code>tsconfig.json</code></td><td><span class="badge badge-ok">Bien</span></td><td>Strict mode. noUnusedLocals.</td></tr>
+    <tr><td><code>.gitignore</code></td><td><span class="badge badge-ok">Bien</span></td><td>Cubre DB, reports, dist, logs</td></tr>
+    <tr><td><code>.github/</code></td><td><span class="badge badge-err">Vacío</span></td><td>No hay workflows de CI</td></tr>
+  </tbody>
+</table>
+
+<br>
+<div class="panel" style="text-align:center; border-color: var(--amber);">
+  <p style="color:var(--amber); font-weight:bold;">Resumen ejecutivo</p>
+  <p>Proyecto <strong>sólido y bien diseñado</strong>. La arquitectura es limpia, la seguridad está bien pensada, y los 75 tests dan confianza. Los principales puntos de mejora son: <strong>descomponer el frontend</strong> (App.tsx monolítico), <strong>agregar CI/CD</strong>, <strong>validación de input</strong> en endpoints de escritura, y <strong>un linter</strong> para mantener consistencia. El proyecto está en buena forma para recibir un tercer adapter y features de export/búsqueda.</p>
+</div>

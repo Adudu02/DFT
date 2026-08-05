@@ -22,6 +22,7 @@ export interface IngestSummary {
   files: number;
   filesChanged: number;
   eventsInserted: number;
+  skillsInserted?: number;
   memories: number;
   unknownModels: string[];
   unparseableLines: number;
@@ -40,7 +41,8 @@ async function ingestFile(
   pricing: Pricing,
   unknown: UnknownModels,
   timeZone?: string,
-): Promise<{ inserted: number; skipped: number }> {
+  reparseSkills = false,
+): Promise<{ inserted: number; skillsInserted: number; skipped: number }> {
   const st = await stat(path);
   const sizeNow = st.size;
   const mtimeNow = Math.floor(st.mtimeMs);
@@ -50,7 +52,9 @@ async function ingestFile(
     .get(path) as OffsetRow | undefined;
 
   // Sin cambios (mismo tamano y mtime) => nada que hacer.
-  if (prev && prev.size === sizeNow && prev.mtime_ms === mtimeNow) return { inserted: 0, skipped: 0 };
+  if (prev && prev.size === sizeNow && prev.mtime_ms === mtimeNow && !reparseSkills) {
+    return { inserted: 0, skillsInserted: 0, skipped: 0 };
+  }
 
   // Archivo reemplazado/truncado (mas chico que lo leido) => releer desde 0.
   const fromLine = prev && sizeNow >= prev.size ? prev.line_count : 0;
@@ -58,7 +62,7 @@ async function ingestFile(
   const raw = await readFileRO(path);
   const { sessionId, project } = adapter.deriveIds(path, raw);
   const { events, lineCount, skipped } = adapter.parseLines(raw, fromLine, sessionId);
-  const skillUsages = adapter.parseSkills(raw, fromLine);
+  const skillUsages = adapter.parseSkills(raw, reparseSkills ? 0 : fromLine);
 
   const insertEvent = db.prepare(`
     INSERT OR IGNORE INTO usage_events
@@ -71,18 +75,22 @@ async function ingestFile(
   `);
 
   let inserted = 0;
+  let skillsInserted = 0;
   const run = db.prepare("BEGIN");
   run.run();
   try {
     for (const su of skillUsages) {
-      insertSkill.run(su.skill, sessionId, su.ts, su.kind);
+      if (insertSkill.run(su.skill, sessionId, su.ts, su.kind).changes > 0) skillsInserted++;
     }
     for (const { dedupKey, event } of events) {
       const rate = getRate(pricing, event.model, unknown);
       const cost = costForEvent(event, rate);
+      // Para adapters multiSession (Qwen), cada event tiene su propio sessionId.
+      // Para adapters normales (Claude, Codex), se usa el sessionId del archivo.
+      const eventSessionId = adapter.multiSession ? event.sessionId : sessionId;
       const res = insertEvent.run(
         dedupKey,
-        sessionId,
+        eventSessionId,
         event.ts,
         dayInTz(event.ts, timeZone),
         event.model,
@@ -96,13 +104,12 @@ async function ingestFile(
     }
 
     // Recalcula agregados de la sesion desde la DB (idempotente).
-    const agg = db
-      .prepare(
-        "SELECT COUNT(*) AS turns, MIN(ts) AS started, MAX(ts) AS ended FROM usage_events WHERE session_id = ?",
-      )
-      .get(sessionId) as { turns: number; started: string | null; ended: string | null };
+    // Para adapters multiSession (Qwen), upsertamos una entrada por cada sessionId único.
+    const sessionIdsToUpsert = adapter.multiSession
+      ? [...new Set(events.map((e) => e.event.sessionId))]
+      : [sessionId];
 
-    db.prepare(`
+    const upsertSession = db.prepare(`
       INSERT INTO sessions (id, agent, project, started_at, ended_at, turns, source_path)
       VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
@@ -112,7 +119,16 @@ async function ingestFile(
         ended_at = excluded.ended_at,
         turns = excluded.turns,
         source_path = excluded.source_path
-    `).run(sessionId, adapter.id, project, agg.started, agg.ended, agg.turns, path);
+    `);
+
+    for (const sid of sessionIdsToUpsert) {
+      const agg = db
+        .prepare(
+          "SELECT COUNT(*) AS turns, MIN(ts) AS started, MAX(ts) AS ended FROM usage_events WHERE session_id = ?",
+        )
+        .get(sid) as { turns: number; started: string | null; ended: string | null };
+      upsertSession.run(sid, adapter.id, project, agg.started, agg.ended, agg.turns, path);
+    }
 
     db.prepare(`
       INSERT INTO ingest_offsets (path, size, mtime_ms, line_count, updated_at)
@@ -128,20 +144,21 @@ async function ingestFile(
     throw err;
   }
 
-  return { inserted, skipped };
+  return { inserted, skillsInserted, skipped };
 }
 
 /** Ingesta todos los transcripts descubiertos (todos los adapters) hacia `db`. */
 export async function ingestAll(
   db: DB,
-  opts: { projectsRoot?: string; codexRoot?: string; pricing?: Pricing; staleDays?: number; timeZone?: string } = {},
+  opts: { projectsRoot?: string; codexRoot?: string; qwenRoot?: string; pricing?: Pricing; staleDays?: number; timeZone?: string; reparseSkills?: boolean } = {},
 ): Promise<IngestSummary> {
   const pricing = opts.pricing ?? (await loadPricing());
   const unknown = new UnknownModels();
-  const adapters = getIngestAdapters({ claudeRoot: opts.projectsRoot, codexRoot: opts.codexRoot });
+  const adapters = getIngestAdapters({ claudeRoot: opts.projectsRoot, codexRoot: opts.codexRoot, qwenRoot: opts.qwenRoot });
 
   let files = 0;
   let eventsInserted = 0;
+  let skillsInserted = 0;
   let filesChanged = 0;
   let unparseableLines = 0;
 
@@ -149,9 +166,12 @@ export async function ingestAll(
     const paths = await adapter.discover();
     files += paths.length;
     for (const path of paths) {
-      const { inserted, skipped } = await ingestFile(db, adapter, path, pricing, unknown, opts.timeZone);
-      if (inserted > 0) filesChanged++;
+      const { inserted, skillsInserted: skills, skipped } = await ingestFile(
+        db, adapter, path, pricing, unknown, opts.timeZone, opts.reparseSkills,
+      );
+      if (inserted > 0 || skills > 0) filesChanged++;
       eventsInserted += inserted;
+      skillsInserted += skills;
       unparseableLines += skipped;
     }
   }
@@ -164,6 +184,7 @@ export async function ingestAll(
     files,
     filesChanged,
     eventsInserted,
+    skillsInserted,
     memories,
     unknownModels: unknown.list(),
     unparseableLines,
@@ -215,6 +236,7 @@ export async function rebuild(
       timeZone: config.timeZone,
       projectsRoot: opts.projectsRoot ?? roots.projectsRoot,
       codexRoot: roots.codexRoot,
+      qwenRoot: roots.qwenRoot,
     });
   } finally {
     db.close();

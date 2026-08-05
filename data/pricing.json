@@ -1,7 +1,7 @@
 {
   "verified_at": "2026-07",
   "source_url": "https://platform.claude.com/docs/en/about-claude/pricing",
-  "note": "USD por millon de tokens. Editable por el usuario. El build debe re-verificar contra la pagina oficial. Tarifas OpenAI (gpt-*) verificadas 2026-07 (aipricing.guru / tldl.io); cached-input = 10% del input, que ya modela el motor de costos (cacheRead*input*0.10).",
+  "note": "USD por millon de tokens. Editable por el usuario. El build debe re-verificar contra la pagina oficial. Tarifas OpenAI (gpt-*) verificadas 2026-07 (aipricing.guru / tldl.io); cached-input = 10% del input, que ya modela el motor de costos (cacheRead*input*0.10). Tarifas Qwen (qwen3.*) verificadas 2026-08 (Alibaba Cloud); cached-input = 10% del input.",
   "models": {
     "claude-fable-5": { "input": 10.0, "output": 50.0 },
     "claude-opus-5": { "input": 5.0, "output": 25.0 },
@@ -14,6 +14,10 @@
     "gpt-5.5": { "input": 5.0, "output": 30.0 },
     "gpt-5.6-sol": { "input": 5.0, "output": 30.0 },
     "gpt-5.6-terra": { "input": 2.5, "output": 15.0 },
-    "gpt-5.6-luna": { "input": 1.0, "output": 6.0 }
+    "gpt-5.6-luna": { "input": 1.0, "output": 6.0 },
+    "qwen3.7-plus": { "input": 0.30, "output": 1.20 },
+    "qwen3-plus": { "input": 0.30, "output": 1.20 },
+    "qwen3-max": { "input": 1.00, "output": 4.00 },
+    "qwen3-turbo": { "input": 0.10, "output": 0.40 }
   }
 }

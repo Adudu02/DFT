@@ -19,6 +19,13 @@ import {
   parseCodexMeta,
   parseCodexSkills,
 } from "./codex.js";
+import {
+  defaultQwenRoot,
+  discoverQwenUsageFiles,
+  parseQwenUsageLines,
+  loadQwenSessionProjectMap,
+  deriveQwenIdsFromUsage,
+} from "./qwen.js";
 
 export interface ParsedLine {
   dedupKey: string;
@@ -36,6 +43,12 @@ export interface IngestAdapter {
     sessionId: string,
   ): { events: ParsedLine[]; lineCount: number; skipped: number };
   parseSkills(raw: string, fromLine: number): SkillUsage[];
+  /**
+   * Si true, el archivo contiene eventos de múltiples sesiones (ej: Qwen usage files).
+   * Los events devueltos por parseLines tienen su propio sessionId (no el pasado como arg).
+   * El pipeline de ingesta creará entradas en sessions para cada sessionId único encontrado.
+   */
+  multiSession?: boolean;
 }
 
 function claudeAdapter(root: string): IngestAdapter {
@@ -65,18 +78,43 @@ function codexAdapter(root: string): IngestAdapter {
   };
 }
 
+function qwenAdapter(root: string): IngestAdapter {
+  // Cache del mapa sessionId → project (se carga en discover, que es async)
+  let sessionMap: Map<string, string> = new Map();
+  return {
+    id: "qwen",
+    discover: async () => {
+      // Cargar el mapa de sesiones antes de descubrir archivos
+      sessionMap = await loadQwenSessionProjectMap(root);
+      return discoverQwenUsageFiles(root);
+    },
+    deriveIds: (_path, raw) => {
+      return deriveQwenIdsFromUsage(raw, sessionMap);
+    },
+    parseLines: (raw, fromLine, _sessionId) => {
+      // Para Qwen, los events tienen su propio sessionId del usage file
+      return parseQwenUsageLines(raw, sessionMap, fromLine);
+    },
+    parseSkills: () => [], // Qwen no expone skills en el formato que detectamos
+    multiSession: true, // Los usage files contienen múltiples sesiones
+  };
+}
+
 /**
  * Adapters activos para la ingesta. Regla de aislamiento de tests: si el llamador
- * OVERRIDEA claudeRoot (fixtures), NO se agrega Codex con su raíz por defecto —
- * solo si se pasa codexRoot explícito. En producción (sin overrides) ambos usan
- * su raíz real.
+ * OVERRIDEA claudeRoot (fixtures), NO se agregan Codex/Qwen con sus raíces por
+ * defecto — solo si se pasan explícitamente. En producción (sin overrides) todos
+ * usan su raíz real.
  */
-export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: string } = {}): IngestAdapter[] {
+export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: string; qwenRoot?: string } = {}): IngestAdapter[] {
   const claudeRoot = roots.claudeRoot ?? defaultProjectsRoot();
   const adapters: IngestAdapter[] = [claudeAdapter(claudeRoot)];
 
   const codexRoot = roots.codexRoot ?? (roots.claudeRoot ? undefined : defaultCodexRoot());
   if (codexRoot) adapters.push(codexAdapter(codexRoot));
+
+  const qwenRoot = roots.qwenRoot ?? (roots.claudeRoot ? undefined : defaultQwenRoot());
+  if (qwenRoot) adapters.push(qwenAdapter(qwenRoot));
 
   return adapters;
 }
@@ -84,15 +122,17 @@ export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: stri
 /**
  * Traduce `config.agentPaths` (rutas que el usuario configura para conectar sus
  * agentes) a las raíces de ingesta. Claves = id del adapter ("claude-code",
- * "codex"). Si no se configura una ruta se usa la raíz por defecto del agente;
- * Codex se incluye siempre para no perderlo al personalizar la ruta de Claude.
+ * "codex", "qwen"). Si no se configura una ruta se usa la raíz por defecto del
+ * agente; Codex y Qwen se incluyen siempre para no perderlos al personalizar
+ * la ruta de Claude.
  */
 export function rootsFromConfig(
   agentPaths: Record<string, string> = {},
-): { projectsRoot?: string; codexRoot: string } {
+): { projectsRoot?: string; codexRoot: string; qwenRoot: string } {
   return {
     projectsRoot: expandTilde(agentPaths["claude-code"]) || undefined,
     codexRoot: expandTilde(agentPaths["codex"]) || defaultCodexRoot(),
+    qwenRoot: expandTilde(agentPaths["qwen"]) || defaultQwenRoot(),
   };
 }
 

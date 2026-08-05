@@ -130,10 +130,28 @@ export async function discoverCodexSessions(root: string = defaultCodexRoot()): 
   return out.sort();
 }
 
-// ponytail: Codex no expone comandos/skills en el transcript como Claude Code;
-// hasta ver un formato real, no se detecta uso de skills. Sube esto cuando lo haya.
-export function parseCodexSkills(_raw: string, _fromLine = 0): SkillUsage[] {
-  return [];
+/** Detecta comandos directos (`/skill`) en mensajes de usuario de Codex. */
+export function parseCodexSkills(raw: string, fromLine = 0): SkillUsage[] {
+  const out: SkillUsage[] = [];
+  for (const [i, line] of splitLines(raw).entries()) {
+    if (i < fromLine) continue;
+    let o: any;
+    try {
+      o = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const p = o?.type === "response_item" ? o.payload : undefined;
+    if (p?.type !== "message" || p.role !== "user" || !Array.isArray(p.content)) continue;
+    const text = p.content
+      .filter((b: any) => b?.type === "input_text" && typeof b.text === "string")
+      .map((b: any) => b.text)
+      .join("\n");
+    for (const match of text.matchAll(/(?:^|\n)\s*\/([\w.:-]+)(?=\s|$)/g)) {
+      out.push({ skill: match[1], ts: String(o.timestamp ?? ""), kind: "command" });
+    }
+  }
+  return out;
 }
 
 /** Clase paralela a ClaudeCodeAdapter para uso directo (no incremental). */
