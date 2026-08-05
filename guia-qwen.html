@@ -76,14 +76,14 @@
 </style>
 
 <h1>▎Guia Qwen — Motor Agéntico</h1>
-<p class="subtitle">Análisis completo del proyecto · Agosto 2026 · v1.0.0</p>
+<p class="subtitle">Análisis completo del proyecto · Agosto 2026 · v1.1.0</p>
 
 <div class="stat-grid">
-  <div class="stat"><div class="num">75</div><div class="label">Tests pasando</div></div>
-  <div class="stat"><div class="num">13</div><div class="label">Archivos de test</div></div>
+  <div class="stat"><div class="num">88</div><div class="label">Tests pasando</div></div>
+  <div class="stat"><div class="num">14</div><div class="label">Archivos de test</div></div>
   <div class="stat"><div class="num">0</div><div class="label">Errores typecheck</div></div>
-  <div class="stat"><div class="num">~3,800</div><div class="label">Líneas de código</div></div>
-  <div class="stat"><div class="num">2</div><div class="label">Adapters activos</div></div>
+  <div class="stat"><div class="num">~4,500</div><div class="label">Líneas de código</div></div>
+  <div class="stat"><div class="num">3</div><div class="label">Adapters activos</div></div>
   <div class="stat"><div class="num">7</div><div class="label">Páginas frontend</div></div>
 </div>
 
@@ -91,13 +91,14 @@
   <strong style="color:var(--amber);">Índice</strong>
   <ul>
     <li>1. <a href="#overview">Resumen del Proyecto</a></li>
-    <li>2. <a href="#architecture">Arquitectura</a></li>
-    <li>3. <a href="#strengths">Fortalezas</a></li>
-    <li>4. <a href="#issues">Problemas Detectados</a></li>
-    <li>5. <a href="#missing">Lo Que Falta</a></li>
-    <li>6. <a href="#suggestions">Sugerencias de Mejora</a></li>
-    <li>7. <a href="#roadmap">Roadmap Recomendado</a></li>
-    <li>8. <a href="#files">Análisis por Archivo</a></li>
+    <li>2. <a href="#recent-changes">Cambios Recientes (v1.1.0)</a></li>
+    <li>3. <a href="#architecture">Arquitectura</a></li>
+    <li>4. <a href="#strengths">Fortalezas</a></li>
+    <li>5. <a href="#issues">Problemas Detectados</a></li>
+    <li>6. <a href="#missing">Lo Que Falta</a></li>
+    <li>7. <a href="#suggestions">Sugerencias de Mejora</a></li>
+    <li>8. <a href="#roadmap">Roadmap Recomendado</a></li>
+    <li>9. <a href="#files">Análisis por Archivo</a></li>
   </ul>
 </div>
 
@@ -105,22 +106,48 @@
 <h2 id="overview">1. Resumen del Proyecto</h2>
 
 <div class="panel">
-  <p><strong>Motor Agéntico</strong> es un dashboard local de costos y actividad para agentes de IA. Lee transcripts de <strong>Claude Code</strong> (<code>~/.claude/projects</code>) y <strong>Codex</strong> (<code>~/.codex</code>) en <strong>solo lectura</strong>, calcula el gasto "equivalente API" y señala fugas de tokens.</p>
+  <p><strong>Motor Agéntico</strong> es un dashboard local de costos y actividad para agentes de IA. Lee transcripts de <strong>Claude Code</strong> (<code>~/.claude/projects</code>), <strong>Codex</strong> (<code>~/.codex</code>) y <strong>Qwen Code</strong> (<code>~/.qwen</code>) en <strong>solo lectura</strong>, calcula el gasto "equivalente API" y señala fugas de tokens.</p>
   <br>
-  <p><strong>Principio fundamental:</strong> Las fuentes (<code>~/.claude</code>, <code>~/.codex</code>) son SOLO LECTURA. Todo estado propio vive en <code>./data/</code>. No usa claves API, binda solo a <code>127.0.0.1:8081</code>.</p>
+  <p><strong>Principio fundamental:</strong> Las fuentes (<code>~/.claude</code>, <code>~/.codex</code>, <code>~/.qwen</code>) son SOLO LECTURA. Todo estado propio vive en <code>./data/</code>. No usa claves API, binda solo a <code>127.0.0.1:8081</code>.</p>
 </div>
 
 <p><strong>Tech stack:</strong></p>
 <ul>
   <li><strong>Backend:</strong> Node.js ≥ 22.5, Fastify, SQLite (<code>node:sqlite</code> experimental)</li>
-  <li><strong>Frontend:</strong> React 18, Vite 5, Tailwind CSS 3, Recharts</li>
-  <li><strong>Tests:</strong> Vitest (75 tests, 13 suites)</li>
+  <li><strong>Frontend:</strong> React 18, Vite 5, Tailwind CSS 3, Recharts (modular: components/ + pages/)</li>
+  <li><strong>Tests:</strong> Vitest (88 tests, 14 suites)</li>
   <li><strong>Package manager:</strong> pnpm 11</li>
   <li><strong>Lenguaje:</strong> TypeScript 5.9 (strict mode)</li>
 </ul>
 
+<!-- ═══════════════════════ CAMBIOS RECIENTES ═══════════════════════ -->
+<h2 id="recent-changes">2. Cambios Recientes (v1.1.0)</h2>
+
+<div class="panel" style="border-color: var(--green);">
+  <h3 style="color: var(--green);">✓ Implementado</h3>
+  <ul>
+    <li><strong>Adapter Qwen Code</strong> — Parser de <code>~/.qwen/usage/token-usage-*.jsonl</code> con soporte multi-session. Mapeo: input = inputTokens - cachedTokens, output = outputTokens + thoughtsTokens.</li>
+    <li><strong>Frontend modular</strong> — App.tsx (1002 líneas) descompuesto en 21 archivos: <code>components/</code> (Panel, Loading, ErrorMsg, Empty, Legend, Field, RefreshControl) + <code>pages/</code> (Inicio, Ahorro, Skills, Memoria, Actividad, Configuracion, Ayuda) + types/utils/constants/hooks.</li>
+    <li><strong>Pricing actualizado</strong> — Tarifas verificadas ago-2026: gpt-5.4 agregado, gpt-5.6-terra/luna corregidos, claude-sonnet-5 a precio introductorio ($2/$10), qwen3-max/turbo corregidos desde CNY.</li>
+    <li><strong>Downgrade paths diversificados</strong> — Reemplazado <code>downgradeModel</code> único con <code>downgradePaths</code> (Record). Cada modelo caro tiene su destino: opus→sonnet, sonnet→haiku, gpt-5.5→gpt-5.4, gpt-5.4→gpt-5.6-terra, qwen3-max→qwen3-plus, etc.</li>
+    <li><strong>Configuración Qwen</strong> — Campo agregado para ruta <code>~/.qwen</code> en Configuración → Rutas de agentes.</li>
+    <li><strong>Ayuda actualizada</strong> — Menciona Qwen en detección automática y whitelist de seguridad (<code>token-usage-*.jsonl</code>).</li>
+    <li><strong>Soporte multi-session</strong> — Ingest pipeline actualizado para adapters donde un archivo contiene múltiples sesiones (Qwen usage files).</li>
+  </ul>
+</div>
+
+<div class="panel">
+  <h3>Commits recientes</h3>
+  <ul>
+    <li><code>b06b152</code> — feat: diversified downgrade paths for waste detection</li>
+    <li><code>3458367</code> — fix: add gpt-5.4 pricing, add Qwen path to config, update help page</li>
+    <li><code>6466773</code> — fix: update pricing to Aug 2026 rates from official sources</li>
+    <li><code>d5f062f</code> — feat: add Qwen adapter and refactor frontend into modular components</li>
+  </ul>
+</div>
+
 <!-- ═══════════════════════ ARQUITECTURA ═══════════════════════ -->
-<h2 id="architecture">2. Arquitectura</h2>
+<h2 id="architecture">3. Arquitectura</h2>
 
 <div class="panel">
 <pre>
@@ -167,7 +194,7 @@
 </ol>
 
 <!-- ═══════════════════════ FORTALEZAS ═══════════════════════ -->
-<h2 id="strengths">3. Fortalezas <span class="badge badge-ok">✔</span></h2>
+<h2 id="strengths">4. Fortalezas <span class="badge badge-ok">✔</span></h2>
 
 <div class="grid2">
 <div class="panel">
@@ -236,7 +263,7 @@
 </div>
 
 <!-- ═══════════════════════ PROBLEMAS ═══════════════════════ -->
-<h2 id="issues">4. Problemas Detectados</h2>
+<h2 id="issues">5. Problemas Detectados</h2>
 
 <h3 class="priority-high">🔴 Alto — App.tsx es un monolito de 1002 líneas</h3>
 <div class="panel priority-high">
@@ -292,14 +319,13 @@
 </div>
 
 <!-- ═══════════════════════ LO QUE FALTA ═══════════════════════ -->
-<h2 id="missing">5. Lo Que Falta</h2>
+<h2 id="missing">6. Lo Que Falta</h2>
 
 <table>
   <thead>
     <tr><th>Categoría</th><th>Feature</th><th>Prioridad</th><th>Complejidad</th></tr>
   </thead>
   <tbody>
-    <tr><td>Frontend</td><td>Componentes separados (romper App.tsx)</td><td><span class="badge badge-err">Alta</span></td><td>Media</td></tr>
     <tr><td>Frontend</td><td>Paginación en /api/activity</td><td><span class="badge badge-warn">Media</span></td><td>Baja</td></tr>
     <tr><td>Frontend</td><td>Exportar datos (CSV/JSON)</td><td><span class="badge badge-warn">Media</span></td><td>Baja</td></tr>
     <tr><td>Frontend</td><td>Responsive móvil</td><td><span class="badge badge-warn">Media</span></td><td>Media</td></tr>
@@ -321,35 +347,24 @@
 </table>
 
 <!-- ═══════════════════════ SUGERENCIAS ═══════════════════════ -->
-<h2 id="suggestions">6. Sugerencias de Mejora</h2>
+<h2 id="suggestions">7. Sugerencias de Mejora</h2>
 
-<h3>6.1. Romper el monolito del frontend</h3>
-<div class="panel">
-  <p><strong>Problema:</strong> <code>web/src/App.tsx</code> tiene 1002 líneas con 7 páginas, tipos, hooks y componentes.</p>
-  <p><strong>Solución propuesta:</strong></p>
+<h3>7.1. ~~Romper el monolito del frontend~~ <span class="badge badge-ok">✓ Hecho</span></h3>
+<div class="panel" style="border-color: var(--green);">
+  <p><strong>Implementado en v1.1.0:</strong> App.tsx descompuesto en 21 archivos modulares.</p>
 <pre>
 web/src/
-├── App.tsx          ← solo shell + tabs + router
+├── App.tsx          ← 55 líneas (solo shell + tabs)
 ├── types.ts         ← interfaces compartidas
-├── hooks.ts         ← useApi, useRefresh
-├── components/
-│   ├── Panel.tsx
-│   ├── Loading.tsx
-│   ├── ErrorMsg.tsx
-│   └── Legend.tsx
-├── pages/
-│   ├── Inicio.tsx
-│   ├── Ahorro.tsx
-│   ├── Skills.tsx
-│   ├── Memoria.tsx
-│   ├── Actividad.tsx
-│   ├── Configuracion.tsx
-│   └── Ayuda.tsx
-└── utils.ts         ← fmt, compact, pct, usd
+├── hooks.ts         ← useApi, refreshAll, tick system
+├── utils.ts         ← usd(), compact(), pct()
+├── constants.ts     ← AMBER, REFRESH_MS, INLINE_STYLES
+├── components/      ← 7 componentes reutilizables
+└── pages/           ← 7 páginas independientes
 </pre>
 </div>
 
-<h3>6.2. Agregar un linter</h3>
+<h3>7.2. Agregar un linter</h3>
 <div class="panel">
   <p>No hay eslint ni biome. Agregar <code>biome</code> (rápido, zero-config) para asegurar consistencia de estilo y detectar problemas comunes:</p>
 <pre>
@@ -360,7 +375,7 @@ pnpm biome init
 </pre>
 </div>
 
-<h3>6.3. CI/CD con GitHub Actions</h3>
+<h3>7.3. CI/CD con GitHub Actions</h3>
 <div class="panel">
   <p>El proyecto tiene <code>.github/</code> pero no hay workflow de CI. Agregar:</p>
 <pre>
@@ -381,7 +396,7 @@ jobs:
 </pre>
 </div>
 
-<h3>6.4. Graceful shutdown</h3>
+<h3>7.4. Graceful shutdown</h3>
 <div class="panel">
   <p>Agregar signal handlers en <code>server.ts</code>:</p>
 <pre>
@@ -396,7 +411,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
 </pre>
 </div>
 
-<h3>6.5. Validación de pricing</h3>
+<h3>7.5. Validación de pricing</h3>
 <div class="panel">
   <p>Antes de guardar pricing.json, validar:</p>
   <ul>
@@ -406,38 +421,50 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
   </ul>
 </div>
 
-<h3>6.6. Paginación en /api/activity</h3>
+<h3>7.6. Paginación en /api/activity</h3>
 <div class="panel">
   <p>Con muchas sesiones, <code>getActivity()</code> devuelve todo sin paginar. Agregar <code>?page=1&limit=50</code> y un cursor basado en <code>ended_at</code>.</p>
 </div>
 
-<h3>6.7. Exportar datos</h3>
+<h3>7.7. Exportar datos</h3>
 <div class="panel">
   <p>Agregar un endpoint <code>GET /api/export?format=csv|json</code> que exporte sessions + usage_events. Útil para análisis externo o backup.</p>
 </div>
 
-<h3>6.8. Buscador de sesiones</h3>
+<h3>7.8. Buscador de sesiones</h3>
 <div class="panel">
   <p>La página de Actividad muestra todas las sesiones por día. Agregar un buscador que filtre por proyecto, modelo, o texto del prompt (leyendo transcripts en demanda).</p>
 </div>
 
 <!-- ═══════════════════════ ROADMAP ═══════════════════════ -->
-<h2 id="roadmap">7. Roadmap Recomendado</h2>
+<h2 id="roadmap">8. Roadmap Recomendado</h2>
 
 <div class="panel">
-  <h3>Fase 1 — Limpieza técnica <span class="badge badge-warn">1-2 días</span></h3>
+  <h3>Fase 1 — Limpieza técnica <span class="badge badge-ok">✓ Completada</span></h3>
   <ul>
-    <li>☐ Romper App.tsx en componentes/páginas separadas</li>
+    <li>☑ Romper App.tsx en componentes/páginas separadas <span class="badge badge-ok">✓</span></li>
     <li>☐ Agregar biome + script de lint</li>
     <li>☐ Agregar GitHub Actions CI</li>
     <li>☐ Graceful shutdown en server.ts</li>
     <li>☐ Fix: import dinámico innecesario en CodexAdapter</li>
-    <li>☐ Agregar waste a config.json por defecto</li>
+    <li>☑ Agregar waste a config.json por defecto <span class="badge badge-ok">✓</span></li>
   </ul>
 </div>
 
 <div class="panel">
-  <h3>Fase 2 — Robustez <span class="badge badge-warn">2-3 días</span></h3>
+  <h3>Fase 1.5 — Adapter Qwen <span class="badge badge-ok">✓ Completada</span></h3>
+  <ul>
+    <li>☑ Crear adapter Qwen Code (src/adapters/qwen.ts) <span class="badge badge-ok">✓</span></li>
+    <li>☑ Soporte multi-session en ingest pipeline <span class="badge badge-ok">✓</span></li>
+    <li>☑ Pricing Qwen (qwen3.7-plus, qwen3-plus, qwen3-max, qwen3-turbo) <span class="badge badge-ok">✓</span></li>
+    <li>☑ Tests para adapter Qwen (13 tests) <span class="badge badge-ok">✓</span></li>
+    <li>☑ Configuración de ruta Qwen en UI <span class="badge badge-ok">✓</span></li>
+    <li>☑ Downgrade paths diversificados <span class="badge badge-ok">✓</span></li>
+  </ul>
+</div>
+
+<div class="panel">
+  <h3>Fase 2 — Robustez <span class="badge badge-warn">Pendiente</span></h3>
   <ul>
     <li>☐ Validación de input en PUT /api/pricing y PUT /api/config</li>
     <li>☐ Paginación en /api/activity</li>
@@ -449,19 +476,19 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
 </div>
 
 <div class="panel">
-  <h3>Fase 3 — Features <span class="badge badge-info">3-5 días</span></h3>
+  <h3>Fase 3 — Features <span class="badge badge-info">Pendiente</span></h3>
   <ul>
     <li>☐ Exportar datos (CSV/JSON)</li>
     <li>☐ Buscador de sesiones/prompts</li>
     <li>☐ Catálogo de skills para Codex</li>
     <li>☐ Responsive móvil</li>
     <li>☐ Dockerfile</li>
-    <li>☐ Soporte para un tercer adapter (ej. Gemini)</li>
+    <li>☐ Soporte para un cuarto adapter (ej. Gemini)</li>
   </ul>
 </div>
 
 <!-- ═══════════════════════ POR ARCHIVO ═══════════════════════ -->
-<h2 id="files">8. Análisis por Archivo</h2>
+<h2 id="files">9. Análisis por Archivo</h2>
 
 <h3>Backend — src/</h3>
 <table>
@@ -512,10 +539,16 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
       <td>Import dinámico innecesario en parseSession. Por lo demás sólido.</td>
     </tr>
     <tr>
+      <td><code>adapters/qwen.ts</code></td>
+      <td>Parser de usage files Qwen</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>Multi-session support. Mapeo inputTokens-cachedTokens, outputTokens+thoughtsTokens. 13 tests.</td>
+    </tr>
+    <tr>
       <td><code>adapters/registry.ts</code></td>
       <td>Registro de adapters + ingesta</td>
       <td><span class="badge badge-ok">Bien</span></td>
-      <td>Patrón limpio. Isolation de tests correcto.</td>
+      <td>Patrón limpio. Isolation de tests correcto. Soporta multiSession flag.</td>
     </tr>
     <tr>
       <td><code>adapters/types.ts</code></td>
@@ -612,8 +645,38 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
   <tbody>
     <tr>
       <td><code>web/src/App.tsx</code></td>
-      <td><span class="badge badge-err">Monolito</span></td>
-      <td>1002 líneas. Necesita descomposición urgente.</td>
+      <td><span class="badge badge-ok">Bien</span></td>
+      <td>55 líneas. Shell con tabs + imports. Descompuesto en v1.1.0.</td>
+    </tr>
+    <tr>
+      <td><code>web/src/types.ts</code></td>
+      <td><span class="badge badge-ok">Nuevo</span></td>
+      <td>Interfaces del API (Summary, Config, WasteReport, etc.)</td>
+    </tr>
+    <tr>
+      <td><code>web/src/hooks.ts</code></td>
+      <td><span class="badge badge-ok">Nuevo</span></td>
+      <td>useApi, refreshAll, tick system para auto-refresh.</td>
+    </tr>
+    <tr>
+      <td><code>web/src/utils.ts</code></td>
+      <td><span class="badge badge-ok">Nuevo</span></td>
+      <td>usd(), compact(), pct() helpers de formato.</td>
+    </tr>
+    <tr>
+      <td><code>web/src/constants.ts</code></td>
+      <td><span class="badge badge-ok">Nuevo</span></td>
+      <td>AMBER colors, REFRESH_MS, INLINE_STYLES.</td>
+    </tr>
+    <tr>
+      <td><code>web/src/components/*.tsx</code></td>
+      <td><span class="badge badge-ok">Nuevo</span></td>
+      <td>7 componentes: Panel, Loading, ErrorMsg, Empty, Legend, Field, RefreshControl.</td>
+    </tr>
+    <tr>
+      <td><code>web/src/pages/*.tsx</code></td>
+      <td><span class="badge badge-ok">Nuevo</span></td>
+      <td>7 páginas: Inicio, Ahorro, Skills, Memoria, Actividad, Configuracion, Ayuda.</td>
     </tr>
     <tr>
       <td><code>web/src/main.tsx</code></td>
@@ -646,15 +709,16 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
   <tbody>
     <tr><td><code>claude-code.test.ts</code></td><td>9</td><td>Parser, dedup, synthetic, skills</td></tr>
     <tr><td><code>codex.test.ts</code></td><td>8</td><td>Parser, meta, skills, discover</td></tr>
+    <tr><td><code>qwen.test.ts</code></td><td>13</td><td>Parser usage files, session map, prompts, skills, multi-session</td></tr>
     <tr><td><code>ingest.test.ts</code></td><td>6</td><td>Incremental, reparse, multi-adapter</td></tr>
     <tr><td><code>cost.test.ts</code></td><td>4</td><td>Fórmula, modelo desconocido</td></tr>
     <tr><td><code>summary.test.ts</code></td><td>2</td><td>Resumen, ventana</td></tr>
-    <tr><td><code>waste.test.ts</code></td><td>7</td><td>3 UCs + tendencia + umbrales</td></tr>
+    <tr><td><code>waste.test.ts</code></td><td>7</td><td>3 UCs + tendencia + downgrade paths</td></tr>
     <tr><td><code>skills.test.ts</code></td><td>10</td><td>Catálogo, uso, $ ahorrado, builtin</td></tr>
     <tr><td><code>memory.test.ts</code></td><td>4</td><td>Grafo, wikilinks, obsolescencia</td></tr>
     <tr><td><code>activity.test.ts</code></td><td>11</td><td>Timeline, drill-down, prompts, TZ</td></tr>
     <tr><td><code>cli.test.ts</code></td><td>5</td><td>Tabla, waste mode, args</td></tr>
-    <tr><td><code>registry.test.ts</code></td><td>4</td><td>Adapters, roots, isolation</td></tr>
+    <tr><td><code>registry.test.ts</code></td><td>4</td><td>Adapters, roots, isolation, multiSession</td></tr>
     <tr><td><code>report.test.ts</code></td><td>4</td><td>Write, latest, findings</td></tr>
     <tr><td><code>integrity.test.ts</code></td><td>1</td><td>Hash fuentes antes/después</td></tr>
   </tbody>
@@ -678,7 +742,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
 </table>
 
 <br>
-<div class="panel" style="text-align:center; border-color: var(--amber);">
-  <p style="color:var(--amber); font-weight:bold;">Resumen ejecutivo</p>
-  <p>Proyecto <strong>sólido y bien diseñado</strong>. La arquitectura es limpia, la seguridad está bien pensada, y los 75 tests dan confianza. Los principales puntos de mejora son: <strong>descomponer el frontend</strong> (App.tsx monolítico), <strong>agregar CI/CD</strong>, <strong>validación de input</strong> en endpoints de escritura, y <strong>un linter</strong> para mantener consistencia. El proyecto está en buena forma para recibir un tercer adapter y features de export/búsqueda.</p>
+<div class="panel" style="text-align:center; border-color: var(--green);">
+  <p style="color:var(--green); font-weight:bold;">Resumen ejecutivo (v1.1.0)</p>
+  <p>Proyecto <strong>sólido y en active development</strong>. 88 tests pasando, 3 adapters (Claude Code, Codex, Qwen), frontend modular (21 archivos), pricing actualizado ago-2026, y waste detection con downgrade paths diversificados. Los principales puntos de mejora pendientes son: <strong>agregar CI/CD</strong>, <strong>validación de input</strong> en endpoints de escritura, <strong>un linter</strong> para mantener consistencia, y features de export/búsqueda. El proyecto está en excelente forma para escalar.</p>
 </div>
