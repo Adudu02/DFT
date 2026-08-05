@@ -104,7 +104,7 @@ export interface WasteThresholds {
   expensiveInputRate: number;
   trivialOutputTokens: number;
   mismatchMinTurns: number;
-  downgradeModel: string;
+  downgradePaths: Record<string, string>;
 }
 
 export interface Config {

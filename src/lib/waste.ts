@@ -27,7 +27,7 @@ export interface WasteThresholds {
   expensiveInputRate: number; // tarifa input desde la que un modelo es "caro"
   trivialOutputTokens: number; // salida por turno bajo la cual el turno es trivial
   mismatchMinTurns: number; // min. turnos triviales para señalar mismatch
-  downgradeModel: string; // modelo destino sugerido para el downgrade
+  downgradePaths: Record<string, string>; // modelo caro → modelo destino sugerido
 }
 
 export const DEFAULT_WASTE: WasteThresholds = {
@@ -38,7 +38,24 @@ export const DEFAULT_WASTE: WasteThresholds = {
   expensiveInputRate: 5.0,
   trivialOutputTokens: 2_000,
   mismatchMinTurns: 3,
-  downgradeModel: "claude-sonnet-5",
+  downgradePaths: {
+    "claude-opus-5": "claude-sonnet-5",
+    "claude-opus-4-8": "claude-sonnet-5",
+    "claude-opus-4-7": "claude-sonnet-5",
+    "claude-opus-4-6": "claude-sonnet-5",
+    "claude-opus-4-5": "claude-sonnet-5",
+    "claude-sonnet-5": "claude-haiku-4-5",
+    "claude-sonnet-4-6": "claude-haiku-4-5",
+    "claude-fable-5": "claude-sonnet-5",
+    "claude-mythos-5": "claude-sonnet-5",
+    "gpt-5.5": "gpt-5.4",
+    "gpt-5.6-sol": "gpt-5.4",
+    "gpt-5.4": "gpt-5.6-terra",
+    "gpt-5.6-terra": "gpt-5.6-luna",
+    "qwen3-max": "qwen3-plus",
+    "qwen3.7-plus": "qwen3-plus",
+    "qwen3-plus": "qwen3-turbo",
+  },
 };
 
 // ponytail: ahorro de cache-miss = input * rate.input * (1 - 0.10). Es un techo:
@@ -207,58 +224,60 @@ export function getWaste(
   }
 
   // UC2 — model-mismatch: turnos triviales (poca salida) en un modelo caro. Se
-  // agrega por (sesión,modelo) SOLO sobre eventos triviales.
-  const target = getRate(pricing, thresholds.downgradeModel);
-  if (target) {
-    const trivialRows = db
-      .prepare(
-        `SELECT u.session_id AS sessionId, s.project AS project, u.model AS model,
-                MAX(u.day) AS day, COUNT(*) AS turns,
-                SUM(u.input_tokens) AS input, SUM(u.output_tokens) AS output,
-                SUM(u.cache_write_tokens) AS cacheWrite, SUM(u.cache_read_tokens) AS cacheRead,
-                SUM(u.cost_usd) AS costUsd
-         FROM usage_events u JOIN sessions s ON s.id = u.session_id
-         WHERE u.output_tokens <= ?
-         GROUP BY u.session_id, u.model`,
-      )
-      .all(thresholds.trivialOutputTokens) as unknown as (Row & { turns: number })[];
+  // agrega por (sesión,modelo) SOLO sobre eventos triviales. Cada modelo tiene
+  // su propio destino de downgrade según downgradePaths.
+  const trivialRows = db
+    .prepare(
+      `SELECT u.session_id AS sessionId, s.project AS project, u.model AS model,
+              MAX(u.day) AS day, COUNT(*) AS turns,
+              SUM(u.input_tokens) AS input, SUM(u.output_tokens) AS output,
+              SUM(u.cache_write_tokens) AS cacheWrite, SUM(u.cache_read_tokens) AS cacheRead,
+              SUM(u.cost_usd) AS costUsd
+       FROM usage_events u JOIN sessions s ON s.id = u.session_id
+       WHERE u.output_tokens <= ?
+       GROUP BY u.session_id, u.model`,
+    )
+    .all(thresholds.trivialOutputTokens) as unknown as (Row & { turns: number })[];
 
-    for (const r of trivialRows) {
-      if (r.model === thresholds.downgradeModel) continue; // ya está en el destino
-      const rate = getRate(pricing, r.model);
-      if (!rate || rate.input < thresholds.expensiveInputRate) continue; // no es caro (o sin tarifa)
-      if (r.turns < thresholds.mismatchMinTurns) continue;
+  for (const r of trivialRows) {
+    const targetModel = thresholds.downgradePaths[r.model];
+    if (!targetModel) continue; // no hay path de downgrade para este modelo
+    if (r.model === targetModel) continue; // ya está en el destino
+    const target = getRate(pricing, targetModel);
+    if (!target) continue; // modelo destino sin tarifa
+    const rate = getRate(pricing, r.model);
+    if (!rate || rate.input < thresholds.expensiveInputRate) continue; // no es caro (o sin tarifa)
+    if (r.turns < thresholds.mismatchMinTurns) continue;
 
-      // costForEvent es lineal en tokens ⇒ vale sobre las sumas del grupo.
-      const asEvent = {
+    // costForEvent es lineal en tokens ⇒ vale sobre las sumas del grupo.
+    const asEvent = {
+      input: r.input,
+      output: r.output,
+      cacheWrite: r.cacheWrite,
+      cacheRead: r.cacheRead,
+    } as UsageEvent;
+    const targetCost = costForEvent(asEvent, target);
+    const estUsd = r.costUsd - targetCost;
+    if (estUsd <= 0) continue;
+
+    findings.push({
+      kind: "model-mismatch",
+      sessionId: r.sessionId,
+      project: r.project,
+      day: r.day,
+      title: `${r.turns} turnos triviales en ${r.model}`,
+      detail: `Salida ≤ ${fmtTokens(thresholds.trivialOutputTokens)} tok/turno: ${targetModel} habría bastado. Cambiá de modelo para trabajo liviano.`,
+      estUsd,
+      estTokens: r.input + r.output,
+      metrics: {
         input: r.input,
         output: r.output,
         cacheWrite: r.cacheWrite,
         cacheRead: r.cacheRead,
-      } as UsageEvent;
-      const targetCost = costForEvent(asEvent, target);
-      const estUsd = r.costUsd - targetCost;
-      if (estUsd <= 0) continue;
-
-      findings.push({
-        kind: "model-mismatch",
-        sessionId: r.sessionId,
-        project: r.project,
-        day: r.day,
-        title: `${r.turns} turnos triviales en ${r.model}`,
-        detail: `Salida ≤ ${fmtTokens(thresholds.trivialOutputTokens)} tok/turno: ${thresholds.downgradeModel} habría bastado. Cambiá de modelo para trabajo liviano.`,
-        estUsd,
-        estTokens: r.input + r.output,
-        metrics: {
-          input: r.input,
-          output: r.output,
-          cacheWrite: r.cacheWrite,
-          cacheRead: r.cacheRead,
-          turns: r.turns,
-          cacheHitRatio: r.cacheRead + r.input > 0 ? r.cacheRead / (r.cacheRead + r.input) : 1,
-        },
-      });
-    }
+        turns: r.turns,
+        cacheHitRatio: r.cacheRead + r.input > 0 ? r.cacheRead / (r.cacheRead + r.input) : 1,
+      },
+    });
   }
 
   // Ranking: primero por $ estimado, luego por tokens (los informativos caen al

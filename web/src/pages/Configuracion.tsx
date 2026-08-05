@@ -89,14 +89,21 @@ export function Configuracion() {
         <Field label="Min. turnos triviales para señalar">
           <input type="number" value={form.waste.mismatchMinTurns} onChange={numW("mismatchMinTurns")} className="in" />
         </Field>
-        <Field label="Modelo destino del downgrade">
-          <input
-            type="text"
-            value={form.waste.downgradeModel}
-            onChange={(e) => setForm({ ...form, waste: { ...form.waste, downgradeModel: e.target.value } })}
-            className="in"
-          />
-        </Field>
+        <div className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Downgrade paths (modelo caro → destino)</div>
+        <textarea
+          value={JSON.stringify(form.waste.downgradePaths, null, 2)}
+          onChange={(e) => {
+            try {
+              const paths = JSON.parse(e.target.value);
+              setForm({ ...form, waste: { ...form.waste, downgradePaths: paths } });
+            } catch {
+              // JSON inválido, no actualizar
+            }
+          }}
+          spellCheck={false}
+          className="w-full h-48 bg-term-bg border border-term-border rounded p-2 text-xs font-mono text-term-amber"
+        />
+        <div className="text-xs text-term-muted">Cada entrada mapea un modelo caro a su destino de downgrade para turnos triviales.</div>
         <div className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Rutas de agentes</div>
         <Field label="Claude Code (vacío = ~/.claude/projects)">
           <input
