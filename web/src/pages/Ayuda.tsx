@@ -16,6 +16,7 @@ export function Ayuda() {
             <ul className="ml-4 mt-1 text-term-muted list-disc">
               <li>Claude Code → <code>~/.claude/projects/**/*.jsonl</code></li>
               <li>Codex → <code>~/.codex/sessions/**</code> y <code>archived_sessions/</code></li>
+              <li>Qwen → <code>~/.qwen/usage/token-usage-*.jsonl</code></li>
             </ul>
           </li>
           <li>
@@ -53,8 +54,8 @@ export function Ayuda() {
           </li>
           <li>
             <span className="text-term-green">✓ Solo lee transcripts.</span> La búsqueda es una
-            lista blanca (<code>rollout-*.jsonl</code>, <code>*.jsonl</code>, memoria <code>*.md</code>).
-            Nunca abre <code>~/.codex/auth.json</code>, <code>.env</code> ni archivos de credenciales.
+            lista blanca (<code>rollout-*.jsonl</code>, <code>token-usage-*.jsonl</code>, <code>*.jsonl</code>, memoria <code>*.md</code>).
+            Nunca abre <code>~/.codex/auth.json</code>, <code>~/.qwen/settings.json</code>, <code>.env</code> ni archivos de credenciales.
           </li>
           <li>
             <span className="text-term-green">✓ Guarda solo métricas.</span> En <code>./data/motor.db</code>
@@ -69,7 +70,7 @@ export function Ayuda() {
           </li>
         </ul>
         <p className="text-xs text-term-muted mt-3">
-          Precios en <code>pricing.json</code> son list-price de terceros (jul-2026); reverificá contra
+          Precios en <code>pricing.json</code> son list-price de terceros (ago-2026); reverificá contra
           las páginas oficiales cuando importe para dinero real.
         </p>
       </Panel>

@@ -116,6 +116,15 @@ export function Configuracion() {
             className="in"
           />
         </Field>
+        <Field label="Qwen (vacío = ~/.qwen)">
+          <input
+            type="text"
+            placeholder="~/.qwen"
+            value={form.agentPaths["qwen"] ?? ""}
+            onChange={(e) => setForm({ ...form, agentPaths: { ...form.agentPaths, qwen: e.target.value } })}
+            className="in"
+          />
+        </Field>
         <div className="text-xs text-term-muted">Tras cambiar rutas, corré Rebuild para reingestar.</div>
         <button onClick={saveConfig} className="btn mt-2">
           Guardar configuración
