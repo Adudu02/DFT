@@ -6,3 +6,7 @@ data/motor.db-shm
 data/reports/
 data/unknown-models.json
 *.log
+
+# editor y material de diseño local (no versionar)
+.vscode/
+Nocturne dashboard redesign/

@@ -1,7 +1,7 @@
 export function Panel({ title, children, className = "" }: { title?: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`min-w-0 bg-term-panel border border-term-border rounded p-4 ${className}`}>
-      {title && <div className="text-term-muted text-xs uppercase tracking-widest mb-2">{title}</div>}
+    <div className={`card2 min-w-0 p-6 ${className}`}>
+      {title && <div className="kicker mb-3">{title}</div>}
       {children}
     </div>
   );

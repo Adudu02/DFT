@@ -11,19 +11,26 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Tema terminal ambar/negro.
+        // Tema "Nocturne": fondo cálido oscuro, acento carmesí/rosa, texto marfil.
+        // Se conservan los nombres `term-*` para no reescribir cada página; el
+        // significado cambió: term-amber = acento carmesí, no ámbar.
         term: {
-          bg: "#0a0a0a",
-          panel: "#141210",
-          border: "#3a2f1a",
-          amber: "#ffb000",
-          amberdim: "#b87a00",
-          green: "#7dd35f",
-          red: "#e5533c",
-          muted: "#8a7a55",
+          bg: "#121110",
+          panel: "#1c1a17",
+          border: "rgba(237,232,224,0.10)",
+          amber: "#e56b83", // acento (gold-bright)
+          amberdim: "#c2415a", // acento tenue (gold)
+          green: "#7dd35f", // positivo/ahorro (se mantiene verde, legible sobre el fondo)
+          red: "#e56b83", // aviso => carmesí, coherente con Nocturne
+          muted: "#948a78",
+          text: "#ede8e0",
         },
       },
       fontFamily: {
+        // "num" para cifras (Bricolage Grotesque); "sans" para el cuerpo.
+        num: ['"Bricolage Grotesque"', "system-ui", "sans-serif"],
+        sans: ['"Bricolage Grotesque"', "system-ui", "-apple-system", "sans-serif"],
+        serif: ['"Instrument Serif"', "Georgia", "serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
       },
     },

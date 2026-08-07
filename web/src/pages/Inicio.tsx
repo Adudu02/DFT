@@ -61,14 +61,14 @@ export function Inicio() {
         <div className="h-24 mt-3">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={spark} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
-              <XAxis dataKey="day" tick={{ fill: "#8a7a55", fontSize: 10 }} interval="preserveStartEnd" />
+              <XAxis dataKey="day" tick={{ fill: "#948a78", fontSize: 10 }} interval="preserveStartEnd" />
               <Tooltip
-                contentStyle={{ background: "#141210", border: "1px solid #3a2f1a", color: "#ffb000" }}
-                itemStyle={{ color: "#ffb000" }}
-                labelStyle={{ color: "#ffb000" }}
+                contentStyle={{ background: "#1c1a17", border: "1px solid #2a2622", color: "#e56b83" }}
+                itemStyle={{ color: "#e56b83" }}
+                labelStyle={{ color: "#e56b83" }}
                 formatter={(v: number) => (mode === "subs" ? usd(v) : compact(v))}
               />
-              <Line type="monotone" dataKey="v" stroke="#ffb000" strokeWidth={2} dot={false} isAnimationActive={false} />
+              <Line type="monotone" dataKey="v" stroke="#e56b83" strokeWidth={2} dot={false} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -133,13 +133,13 @@ export function Inicio() {
               <PieChart>
                 <Pie data={donut} dataKey="costUsd" nameKey="model" innerRadius={40} outerRadius={65} paddingAngle={2} isAnimationActive={false}>
                   {donut.map((_, i) => (
-                    <Cell key={i} fill={AMBER[i % AMBER.length]} stroke="#0a0a0a" />
+                    <Cell key={i} fill={AMBER[i % AMBER.length]} stroke="#121110" />
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: "#141210", border: "1px solid #3a2f1a", color: "#ffb000" }}
-                  itemStyle={{ color: "#ffb000" }}
-                  labelStyle={{ color: "#ffb000" }}
+                  contentStyle={{ background: "#1c1a17", border: "1px solid #2a2622", color: "#e56b83" }}
+                  itemStyle={{ color: "#e56b83" }}
+                  labelStyle={{ color: "#e56b83" }}
                   formatter={(v: number) => usd(v)}
                 />
               </PieChart>

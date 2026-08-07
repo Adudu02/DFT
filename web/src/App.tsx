@@ -25,14 +25,16 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <style>{INLINE_STYLES}</style>
-      <header className="border-b border-term-border px-3 py-3 flex flex-wrap items-center gap-2 sticky top-0 bg-term-bg z-10">
-        <span className="text-term-amber font-bold whitespace-nowrap">▎motor agéntico</span>
-        <nav className="order-3 w-full overflow-x-auto flex gap-1 text-sm sm:order-none sm:w-auto">
+      <header className="border-b border-term-border px-4 sm:px-8 py-4 flex flex-wrap items-center gap-x-6 gap-y-3 sticky top-0 bg-term-bg/95 backdrop-blur z-10">
+        <span className="brand text-2xl sm:text-3xl text-term-text whitespace-nowrap mr-auto">motor agéntico</span>
+        <nav className="order-3 w-full overflow-x-auto flex gap-5 text-sm sm:order-none sm:w-auto">
           {TABS.map(([name], i) => (
             <button
               key={name}
               onClick={() => setTab(i)}
-              className={`px-3 py-1 rounded ${i === tab ? "bg-term-amber text-black" : "text-term-muted hover:text-term-amber"}`}
+              className={`num font-bold whitespace-nowrap transition-colors ${
+                i === tab ? "text-term-amber" : "text-term-muted hover:text-term-amber"
+              }`}
             >
               {name}
             </button>
@@ -40,7 +42,7 @@ export default function App() {
         </nav>
         <RefreshControl />
       </header>
-      <main className="p-3 sm:p-4 max-w-6xl mx-auto overflow-x-hidden">
+      <main className="p-4 sm:p-8 max-w-[1360px] mx-auto overflow-x-hidden">
         <Active />
       </main>
     </div>

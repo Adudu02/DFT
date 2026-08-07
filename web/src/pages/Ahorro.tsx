@@ -35,9 +35,9 @@ export function Ahorro() {
           <div className="h-24 mt-3">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.trend.map((p) => ({ day: p.day.slice(5), v: p.estUsd }))} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
-                <XAxis dataKey="day" tick={{ fill: "#8a7a55", fontSize: 10 }} interval="preserveStartEnd" />
+                <XAxis dataKey="day" tick={{ fill: "#948a78", fontSize: 10 }} interval="preserveStartEnd" />
                 <Tooltip
-                  contentStyle={{ background: "#141210", border: "1px solid #3a2f1a", color: "#7dd35f" }}
+                  contentStyle={{ background: "#1c1a17", border: "1px solid #2a2622", color: "#7dd35f" }}
                   itemStyle={{ color: "#7dd35f" }}
                   labelStyle={{ color: "#7dd35f" }}
                   formatter={(v: number) => usd(v)}
