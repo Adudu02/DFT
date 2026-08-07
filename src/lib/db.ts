@@ -1,16 +1,12 @@
 /**
- * SQLite vía node:sqlite (sin deps nativas, PLAN §3). La DB es un caché
+ * SQLite vía better-sqlite3. La DB es un caché
  * reconstruible en ./data/motor.db — el schema se crea si no existe.
  */
-import { createRequire } from "node:module";
+import Database from "better-sqlite3";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-// node:sqlite es experimental: se carga con require en runtime para que el
-// bundler (Vite/Vitest) no intente transformarlo estáticamente.
-const { DatabaseSync } = createRequire(import.meta.url)("node:sqlite") as typeof import("node:sqlite");
-
-export type DB = import("node:sqlite").DatabaseSync;
+export type DB = Database.Database;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS sessions (
@@ -36,6 +32,8 @@ CREATE TABLE IF NOT EXISTS usage_events (
 );
 CREATE INDEX IF NOT EXISTS idx_usage_day   ON usage_events(day);
 CREATE INDEX IF NOT EXISTS idx_usage_model ON usage_events(model);
+CREATE INDEX IF NOT EXISTS idx_sessions_ended ON sessions(ended_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_sessions_filter ON sessions(project, agent);
 CREATE TABLE IF NOT EXISTS skills_usage (
   skill                   TEXT NOT NULL,
   session_id              TEXT NOT NULL,
@@ -66,7 +64,7 @@ CREATE TABLE IF NOT EXISTS ingest_offsets (
 
 /** Abre (o crea) la DB en `path` y asegura el schema. */
 export function openDb(path: string): DB {
-  const db = new DatabaseSync(path);
+  const db = new Database(path);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec(SCHEMA);
   // Migración para DBs creadas antes de source_path (CREATE TABLE IF NOT EXISTS

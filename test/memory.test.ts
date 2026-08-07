@@ -1,8 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scanMemory } from "../src/lib/memory.js";
+import { openDb } from "../src/lib/db.js";
+import { ingestAll } from "../src/ingest.js";
+import { loadPricing } from "../src/lib/pricing.js";
 
 let tmp: string;
 let root: string;
@@ -58,5 +61,18 @@ describe("scanMemory", () => {
     const future = Date.now() + 40 * 86_400_000;
     const aged = await scanMemory(root, { staleDays: 30, now: future });
     expect(aged.counts.stale).toBe(2);
+  });
+
+  it("sin cambios conserva nodos y solo elimina el archivo que dejó de existir", async () => {
+    const db = openDb(join(tmp, "motor.db"));
+    const options = { projectsRoot: root, pricing: await loadPricing() };
+    await ingestAll(db, options);
+    const first = db.prepare("SELECT path, name FROM memory_nodes ORDER BY path").all();
+    await ingestAll(db, options);
+    expect(db.prepare("SELECT path, name FROM memory_nodes ORDER BY path").all()).toEqual(first);
+    unlinkSync(join(root, "projX", "memory", "b.md"));
+    await ingestAll(db, options);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM memory_nodes").get() as { n: number }).n).toBe(2); // a.md + MEMORY.md
+    db.close();
   });
 });

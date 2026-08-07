@@ -1,0 +1,13 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
+  "files": {
+    "includes": ["src/**/*.ts", "test/**/*.ts", "web/src/**/*.ts", "web/src/**/*.tsx"]
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "correctness": { "noUnusedVariables": "error" }
+    }
+  }
+}

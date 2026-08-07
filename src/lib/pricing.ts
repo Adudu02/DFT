@@ -19,6 +19,27 @@ export interface Pricing {
   note?: string;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+/** Valida datos externos antes de persistirlos. */
+export function validatePricing(value: unknown): Pricing {
+  if (!isRecord(value) || !isRecord(value.models)) throw new Error("pricing inválido: falta 'models'");
+  for (const [model, rate] of Object.entries(value.models)) {
+    if (!model.trim()) throw new Error("pricing inválido: nombre de modelo vacío");
+    const input = isRecord(rate) ? rate.input : undefined;
+    const output = isRecord(rate) ? rate.output : undefined;
+    if (typeof input !== "number" || typeof output !== "number" || !Number.isFinite(input) || !Number.isFinite(output) || input < 0 || output < 0) {
+      throw new Error(`pricing inválido: tarifa inválida para ${model}`);
+    }
+  }
+  for (const field of ["verified_at", "source_url", "note"] as const) {
+    if (value[field] !== undefined && typeof value[field] !== "string") throw new Error(`pricing inválido: ${field} debe ser texto`);
+  }
+  return value as unknown as Pricing;
+}
+
 function defaultPricingPath(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   return join(here, "..", "..", "data", "pricing.json");
@@ -26,17 +47,13 @@ function defaultPricingPath(): string {
 
 export async function loadPricing(path = defaultPricingPath()): Promise<Pricing> {
   const raw = await readFileRO(path);
-  const p = JSON.parse(raw) as Pricing;
-  if (!p.models || typeof p.models !== "object") throw new Error("pricing.json inválido: falta 'models'");
-  return p;
+  return validatePricing(JSON.parse(raw));
 }
 
 export async function savePricing(pricing: Pricing, path = defaultPricingPath()): Promise<Pricing> {
-  if (!pricing.models || typeof pricing.models !== "object") {
-    throw new Error("pricing inválido: falta 'models'");
-  }
-  await writeFile(path, JSON.stringify(pricing, null, 2) + "\n", "utf8");
-  return pricing;
+  const valid = validatePricing(pricing);
+  await writeFile(path, JSON.stringify(valid, null, 2) + "\n", "utf8");
+  return valid;
 }
 
 /** Acumula los modelos vistos sin tarifa, únicos y en orden de aparición. */

@@ -67,6 +67,7 @@ export function Skills() {
                 {s.agents.map((a) => `${a.agent} · ${a.uses} usos · ${usd(a.savedUsd)}`).join("  |  ")}
               </div>
             )}
+            {s.availableTo.length > 0 && <div className="mt-1 text-xs text-term-muted">Disponible en: {s.availableTo.join(" · ")}</div>}
             <div className="mt-1 text-term-green text-sm">{usd(s.savedUsd)} ahorrado</div>
           </div>
         ))}

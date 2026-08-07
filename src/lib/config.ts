@@ -29,6 +29,54 @@ export const DEFAULT_CONFIG: Config = {
   waste: { ...DEFAULT_WASTE },
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function nonNegative(value: unknown, field: string, integer = false): void {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || (integer && !Number.isInteger(value))) {
+    throw new Error(`config inválida: ${field}`);
+  }
+}
+
+/** Valida únicamente las claves recibidas, para preservar PUTs parciales. */
+export function validateConfig(value: unknown): Partial<Config> {
+  if (!isRecord(value)) throw new Error("config inválida: se esperaba un objeto");
+  const allowed = new Set(["hourlyRate", "staleDays", "minutesPerUseDefault", "minutesPerUse", "agentPaths", "timeZone", "waste"]);
+  for (const key of Object.keys(value)) if (!allowed.has(key)) throw new Error(`config inválida: clave desconocida '${key}'`);
+  if (value.hourlyRate !== undefined) nonNegative(value.hourlyRate, "hourlyRate");
+  if (value.staleDays !== undefined) nonNegative(value.staleDays, "staleDays", true);
+  if (value.minutesPerUseDefault !== undefined) nonNegative(value.minutesPerUseDefault, "minutesPerUseDefault");
+  if (value.timeZone !== undefined && typeof value.timeZone !== "string") throw new Error("config inválida: timeZone debe ser texto");
+  for (const field of ["minutesPerUse", "agentPaths"] as const) {
+    if (value[field] === undefined) continue;
+    if (!isRecord(value[field])) throw new Error(`config inválida: ${field}`);
+    for (const [key, item] of Object.entries(value[field])) {
+      if (!key.trim()) throw new Error(`config inválida: ${field} contiene una clave vacía`);
+      if (field === "minutesPerUse") nonNegative(item, `${field}.${key}`);
+      else if (typeof item !== "string") throw new Error(`config inválida: ${field}.${key}`);
+    }
+  }
+  if (value.waste !== undefined) {
+    if (!isRecord(value.waste)) throw new Error("config inválida: waste");
+    const w = value.waste;
+    const wasteKeys = new Set(["minCacheRatio", "minInputTokens", "bloatTurns", "bloatTokens", "expensiveInputRate", "trivialOutputTokens", "mismatchMinTurns", "downgradePaths"]);
+    for (const key of Object.keys(w)) if (!wasteKeys.has(key)) throw new Error(`config inválida: waste.${key}`);
+    if (w.minCacheRatio !== undefined && (typeof w.minCacheRatio !== "number" || !Number.isFinite(w.minCacheRatio) || w.minCacheRatio < 0 || w.minCacheRatio > 1)) throw new Error("config inválida: waste.minCacheRatio");
+    for (const field of ["minInputTokens", "bloatTurns", "bloatTokens", "trivialOutputTokens", "mismatchMinTurns"] as const) {
+      if (w[field] !== undefined) nonNegative(w[field], `waste.${field}`, true);
+    }
+    if (w.expensiveInputRate !== undefined) nonNegative(w.expensiveInputRate, "waste.expensiveInputRate");
+    if (w.downgradePaths !== undefined) {
+      if (!isRecord(w.downgradePaths)) throw new Error("config inválida: waste.downgradePaths");
+      for (const [from, to] of Object.entries(w.downgradePaths)) {
+        if (!from.trim() || typeof to !== "string" || !to.trim()) throw new Error("config inválida: waste.downgradePaths");
+      }
+    }
+  }
+  return value as Partial<Config>;
+}
+
 function defaultConfigPath(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   return join(here, "..", "..", "data", "config.json");
@@ -46,7 +94,7 @@ function merge(partial: Partial<Config>): Config {
 
 export async function loadConfig(path = defaultConfigPath()): Promise<Config> {
   try {
-    return merge(JSON.parse(await readFileRO(path)) as Partial<Config>);
+    return merge(validateConfig(JSON.parse(await readFileRO(path))));
   } catch {
     return { ...DEFAULT_CONFIG }; // sin archivo => defaults
   }
@@ -54,12 +102,13 @@ export async function loadConfig(path = defaultConfigPath()): Promise<Config> {
 
 /** Merge del parcial sobre lo existente (o defaults) y persiste. */
 export async function saveConfig(partial: Partial<Config>, path = defaultConfigPath()): Promise<Config> {
+  const valid = validateConfig(partial);
   const current = await loadConfig(path);
   const next = merge({
     ...current,
-    ...partial,
-    minutesPerUse: { ...current.minutesPerUse, ...(partial.minutesPerUse ?? {}) },
-    agentPaths: { ...current.agentPaths, ...(partial.agentPaths ?? {}) },
+    ...valid,
+    minutesPerUse: { ...current.minutesPerUse, ...(valid.minutesPerUse ?? {}) },
+    agentPaths: { ...current.agentPaths, ...(valid.agentPaths ?? {}) },
   });
   await writeFile(path, JSON.stringify(next, null, 2) + "\n", "utf8");
   return next;

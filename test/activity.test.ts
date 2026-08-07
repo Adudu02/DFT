@@ -5,7 +5,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openDb, type DB } from "../src/lib/db.js";
 import { ingestAll } from "../src/ingest.js";
-import { getActivity, getSessionDetail, getSessionTurns } from "../src/lib/activity.js";
+import { getActivity, getActivityPage, getSessionDetail, getSessionTurns, searchPrompts } from "../src/lib/activity.js";
 import { loadPricing } from "../src/lib/pricing.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -39,6 +39,18 @@ describe("getActivity", () => {
     expect(s.project).toBe("projX");
     expect(s.turns).toBe(4);
     expect(s.models).toContain("claude-opus-4-8");
+  });
+
+  it("pagina por cursor estable y filtra por proyecto/agente/modelo", () => {
+    db.prepare("INSERT INTO sessions (id, agent, project, started_at, ended_at, turns) VALUES (?, ?, ?, ?, ?, ?)").run("older", "codex", "otro", "2026-07-01T00:00:00Z", "2026-07-01T00:00:00Z", 1);
+    db.prepare("INSERT INTO usage_events VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run("older-event", "older", "2026-07-01T00:00:00Z", "2026-07-01", "gpt-test", 1, 1, 0, 0, 0);
+    const first = getActivityPage(db, { limit: 1 });
+    expect(first.days[0].sessions[0].id).toBe("sesion1");
+    expect(first.nextCursor).toBeTruthy();
+    const second = getActivityPage(db, { limit: 1, cursor: first.nextCursor! });
+    expect(second.days[0].sessions[0].id).toBe("older");
+    expect(getActivityPage(db, { project: "otro" }).days[0].sessions[0].id).toBe("older");
+    expect(getActivityPage(db, { agent: "codex", model: "gpt-test" }).days[0].sessions[0].id).toBe("older");
   });
 });
 
@@ -105,6 +117,14 @@ describe("getSessionTurns — parsing real de prompts", () => {
     const turns = (await getSessionTurns(db2, "prompts", "UTC"))!; // UTC explícito: no depender de la máquina
     expect(turns[0].costUsd).toBeCloseTo(5.0, 6); // 1M input opus @ $5/M = $5
     expect(turns[1].costUsd).toBeCloseTo(2.0, 6); // 2M input haiku @ $1/M = $2
+  });
+
+  it("busca prompts sin persistirlos", async () => {
+    const before = (db2.prepare("SELECT COUNT(*) AS n FROM memory_nodes").get() as { n: number }).n;
+    const results = await searchPrompts(db2, "parser");
+    expect(results[0]?.id).toBe("prompts");
+    expect(results[0]?.prompt).toContain("parser");
+    expect((db2.prepare("SELECT COUNT(*) AS n FROM memory_nodes").get() as { n: number }).n).toBe(before);
   });
 });
 

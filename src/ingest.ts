@@ -201,15 +201,26 @@ async function refreshMemoryNodes(db: DB, projectsRoot: string, staleDays?: numb
   }
   db.prepare("BEGIN").run();
   try {
-    db.prepare("DELETE FROM memory_nodes").run();
-    const ins = db.prepare(`
-      INSERT OR REPLACE INTO memory_nodes
+    const previous = db.prepare("SELECT path FROM memory_nodes").all() as { path: string }[];
+    const seen = new Set<string>();
+    const upsert = db.prepare(`
+      INSERT INTO memory_nodes
         (path, name, project, type, size, last_touched, origin_session, stale_bool)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(path) DO UPDATE SET
+        name = excluded.name, project = excluded.project, type = excluded.type,
+        size = excluded.size, last_touched = excluded.last_touched,
+        origin_session = excluded.origin_session, stale_bool = excluded.stale_bool
+      WHERE name IS NOT excluded.name OR project IS NOT excluded.project OR type IS NOT excluded.type
+         OR size IS NOT excluded.size OR last_touched IS NOT excluded.last_touched
+         OR origin_session IS NOT excluded.origin_session OR stale_bool IS NOT excluded.stale_bool
     `);
     for (const n of memNodes) {
-      ins.run(n.id, n.label, n.project, n.type ?? n.kind, n.size ?? 0, n.lastTouched ?? null, origin.get(n.id) ?? null, n.stale ? 1 : 0);
+      seen.add(n.id);
+      upsert.run(n.id, n.label, n.project, n.type ?? n.kind, n.size ?? 0, n.lastTouched ?? null, origin.get(n.id) ?? null, n.stale ? 1 : 0);
     }
+    const del = db.prepare("DELETE FROM memory_nodes WHERE path = ?");
+    for (const row of previous) if (!seen.has(row.path)) del.run(row.path);
     db.prepare("COMMIT").run();
   } catch (err) {
     db.prepare("ROLLBACK").run();

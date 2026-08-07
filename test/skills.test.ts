@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
+import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseSkillUsages } from "../src/adapters/claude-code.js";
 import { openDb, type DB } from "../src/lib/db.js";
 import { ingestAll } from "../src/ingest.js";
-import { getSkills, type CatalogEntry } from "../src/lib/skills.js";
+import { discoverCatalog, getSkills, type CatalogEntry } from "../src/lib/skills.js";
 import { loadConfig, saveConfig, DEFAULT_CONFIG, type Config } from "../src/lib/config.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -116,6 +116,14 @@ describe("config round-trip", () => {
     const loaded = await loadConfig(join(tmp, "no-existe.json"));
     expect(loaded).toEqual(DEFAULT_CONFIG);
   });
+
+  it("una config antigua sin waste lo agrega al guardarla", async () => {
+    const path = join(tmp, "config.json");
+    writeFileSync(path, JSON.stringify({ hourlyRate: 90 }) + "\n");
+    expect((await loadConfig(path)).waste).toEqual(DEFAULT_CONFIG.waste);
+    await saveConfig({ staleDays: 7 }, path);
+    expect(JSON.parse(readFileSync(path, "utf8")).waste).toEqual(DEFAULT_CONFIG.waste);
+  });
 });
 
 describe("parseSkillUsages — sin falsos positivos", () => {
@@ -129,5 +137,25 @@ describe("parseSkillUsages — sin falsos positivos", () => {
   it("mencionar /skill en prosa no cuenta como uso", () => {
     const raw = readFileSync(join(here, "fixtures", "skill-falsepositive.jsonl"), "utf8");
     expect(parseSkillUsages(raw).some((u) => u.skill === "ponytail")).toBe(false);
+  });
+});
+
+describe("discoverCatalog", () => {
+  let tmp: string;
+  beforeEach(() => {
+    tmp = mkdtempSync(join(tmpdir(), "motor-catalog-"));
+    const skill = join(tmp, "codex", "skills", "nested", "ponytail");
+    mkdirSync(skill, { recursive: true });
+    writeFileSync(join(skill, "SKILL.md"), "---\nname: ponytail\ndescription: minimalismo\n---\n");
+    const imported = join(tmp, "codex", "skills", "vendor_imports", "skip");
+    mkdirSync(imported, { recursive: true });
+    writeFileSync(join(imported, "SKILL.md"), "---\nname: no-debe-aparecer\n---\n");
+  });
+  afterEach(() => rmSync(tmp, { recursive: true, force: true }));
+
+  it("descubre skills Codex recursivos y marca disponibilidad", async () => {
+    const catalog = await discoverCatalog({ claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex") });
+    expect(catalog.get("ponytail")?.agents).toEqual(["codex"]);
+    expect(catalog.has("no-debe-aparecer")).toBe(false);
   });
 });

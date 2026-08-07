@@ -17,7 +17,7 @@
  */
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
-import { readDirRO } from "../lib/fs-readonly.js";
+import { readDirRO, readFileRO } from "../lib/fs-readonly.js";
 import type { SkillUsage, UsageEvent } from "./types.js";
 
 export function defaultCodexRoot(): string {
@@ -162,7 +162,7 @@ export class CodexAdapter {
     return discoverCodexSessions(this.root);
   }
   async parseSession(path: string) {
-    const raw = await (await import("../lib/fs-readonly.js")).readFileRO(path);
+    const raw = await readFileRO(path);
     const meta = parseCodexMeta(raw);
     const sessionId = meta.sessionId || basename(path, ".jsonl");
     return {

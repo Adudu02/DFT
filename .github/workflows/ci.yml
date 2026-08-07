@@ -14,7 +14,6 @@ jobs:
 
       - uses: pnpm/action-setup@v4
 
-      # Node 22: node:sqlite (usado por src/lib/db.ts) requiere >= 22.5.
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -24,6 +23,9 @@ jobs:
 
       - name: Typecheck
         run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
 
       - name: Tests
         run: pnpm test

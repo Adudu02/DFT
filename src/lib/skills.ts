@@ -4,7 +4,7 @@
  * (o sin minutos) => $0, como en las capturas de referencia.
  */
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { readFileRO, readDirRO } from "./fs-readonly.js";
 import type { DB } from "./db.js";
 import type { Config } from "./config.js";
@@ -13,6 +13,7 @@ export interface CatalogEntry {
   name: string;
   description: string;
   category: string;
+  agents?: string[];
 }
 
 export interface SkillRow {
@@ -23,6 +24,7 @@ export interface SkillRow {
   savedUsd: number;
   minutesPerUse: number;
   inCatalog: boolean;
+  availableTo: string[];
   agents: { agent: string; uses: number; savedUsd: number }[];
 }
 
@@ -45,11 +47,34 @@ function frontmatter(raw: string): Record<string, string> {
   return out;
 }
 
-/** Recorre skills/ y commands/ (RO) y arma el catálogo por nombre. */
-export async function discoverCatalog(root = join(homedir(), ".claude")): Promise<Map<string, CatalogEntry>> {
+/** Recorre los catálogos instalados de Claude Code y Codex (RO). */
+export async function discoverCatalog(
+  roots: { claudeRoot?: string; codexRoot?: string } = {},
+): Promise<Map<string, CatalogEntry>> {
   const catalog = new Map<string, CatalogEntry>();
+  const add = (name: string, description: string, category: string, agent: string) => {
+    const current = catalog.get(name);
+    catalog.set(name, {
+      name,
+      description: current?.description || description,
+      category: current?.category || category,
+      agents: [...new Set([...(current?.agents ?? []), agent])].sort(),
+    });
+  };
+  const readSkill = async (file: string, fallback: string, category: string, agent: string) => {
+    let raw: string;
+    try {
+      raw = await readFileRO(file);
+    } catch {
+      return;
+    }
+    const fm = frontmatter(raw);
+    add(fm.name || fallback, fm.description ?? "", fm.category || category, agent);
+  };
+
+  const claudeRoot = roots.claudeRoot ?? join(homedir(), ".claude");
   for (const [sub, category] of [["skills", "skill"], ["commands", "comando"]] as const) {
-    const dir = join(root, sub);
+    const dir = join(claudeRoot, sub);
     let entries;
     try {
       entries = await readDirRO(dir);
@@ -60,17 +85,24 @@ export async function discoverCatalog(root = join(homedir(), ".claude")): Promis
       // Soporta tanto `commands/x.md` como `skills/x/SKILL.md`.
       const file = e.isDirectory() ? join(dir, e.name, "SKILL.md") : join(dir, e.name);
       if (!e.isDirectory() && !e.name.endsWith(".md")) continue;
-      let raw: string;
-      try {
-        raw = await readFileRO(file);
-      } catch {
-        continue;
-      }
-      const fm = frontmatter(raw);
-      const name = fm.name || e.name.replace(/\.md$/, "");
-      catalog.set(name, { name, description: fm.description ?? "", category: fm.category || category });
+      await readSkill(file, e.name.replace(/\.md$/, ""), category, "claude-code");
     }
   }
+
+  async function scanCodex(dir: string): Promise<void> {
+    let entries;
+    try {
+      entries = await readDirRO(dir);
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory() && entry.name !== "vendor_imports") await scanCodex(path);
+      else if (entry.isFile() && entry.name === "SKILL.md") await readSkill(path, basename(dir), "skill", "codex");
+    }
+  }
+  await scanCodex(join(roots.codexRoot ?? join(homedir(), ".codex"), "skills"));
   return catalog;
 }
 
@@ -120,6 +152,7 @@ export function getSkills(
       savedUsd,
       minutesPerUse,
       inCatalog: !!cat,
+      availableTo: cat?.agents ?? [],
       agents,
     });
   }

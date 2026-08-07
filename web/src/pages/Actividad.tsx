@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "../hooks.js";
 import { usd, compact } from "../utils.js";
-import type { ActivityDay, SessionDetail, SessionTurn } from "../types.js";
+import type { ActivityDay, ActivityPage, PromptSearchResult, SessionDetail, SessionTurn } from "../types.js";
 import { Panel } from "../components/Panel.js";
 import { Loading } from "../components/Loading.js";
 import { ErrorMsg } from "../components/ErrorMsg.js";
@@ -65,25 +65,98 @@ function SessionDrill({ id }: { id: string }) {
   );
 }
 
+function mergeDays(previous: ActivityDay[], next: ActivityDay[]): ActivityDay[] {
+  const days = new Map(previous.map((day) => [day.day, { ...day, sessions: [...day.sessions] }]));
+  for (const day of next) {
+    const current = days.get(day.day) ?? { day: day.day, sessions: [] };
+    const ids = new Set(current.sessions.map((session) => session.id));
+    current.sessions.push(...day.sessions.filter((session) => !ids.has(session.id)));
+    days.set(day.day, current);
+  }
+  return [...days.values()].sort((a, b) => b.day.localeCompare(a.day));
+}
+
 export function Actividad() {
-  const { data, error } = useApi<ActivityDay[]>("/api/activity");
+  const [filters, setFilters] = useState({ project: "", agent: "", model: "" });
+  const [draft, setDraft] = useState(filters);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const params = new URLSearchParams({ limit: "50" });
+  for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value);
+  if (cursor) params.set("cursor", cursor);
+  const { data, error } = useApi<ActivityPage>(`/api/activity?${params}`);
+  const [days, setDays] = useState<ActivityDay[]>([]);
   const [open, setOpen] = useState<string | null>(null);
+  const [promptQuery, setPromptQuery] = useState("");
+  const [matches, setMatches] = useState<PromptSearchResult[]>([]);
+  const [searchError, setSearchError] = useState("");
+
+  useEffect(() => {
+    if (!data?.days) return;
+    setDays((previous) => (cursor ? mergeDays(previous, data.days) : data.days));
+  }, [data, cursor]);
+
+  const applyFilters = () => {
+    setDays([]);
+    setCursor(null);
+    setFilters(draft);
+  };
+  const search = async () => {
+    setSearchError("");
+    const searchParams = new URLSearchParams({ q: promptQuery, limit: "30" });
+    for (const [key, value] of Object.entries(filters)) if (value) searchParams.set(key, value);
+    const response = await fetch(`/api/activity/search?${searchParams}`);
+    const result = await response.json();
+    if (!response.ok) {
+      setSearchError(result.error ?? "no se pudo buscar");
+      setMatches([]);
+      return;
+    }
+    setMatches(result.results);
+  };
   if (error) return <ErrorMsg msg={error} />;
   if (!data) return <Loading />;
   return (
-    <div className="grid gap-4">
-      {data.length === 0 && <Empty />}
-      {data.map((d) => (
+    <div className="grid gap-4 min-w-0">
+      <Panel title="Filtros y exportación">
+        <div className="grid gap-2 sm:grid-cols-4">
+          {(["project", "agent", "model"] as const).map((field) => (
+            <input key={field} className="in" placeholder={field} value={draft[field]} onChange={(e) => setDraft({ ...draft, [field]: e.target.value })} />
+          ))}
+          <button className="btn w-full sm:w-auto" onClick={applyFilters}>Aplicar filtros</button>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <a className="btn" href="/api/export?format=csv" download>Descargar CSV</a>
+          <a className="btn" href="/api/export?format=json" download>Descargar JSON</a>
+        </div>
+      </Panel>
+
+      <Panel title="Buscar en prompts">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input className="in" value={promptQuery} onChange={(e) => setPromptQuery(e.target.value)} placeholder="Texto del prompt (solo lectura)" />
+          <button className="btn w-full sm:w-auto" onClick={search}>Buscar</button>
+        </div>
+        {searchError && <div className="mt-2 text-xs text-term-red">{searchError}</div>}
+        {matches.length > 0 && <div className="mt-3 grid gap-2 text-xs">{matches.map((match) => (
+          <div key={`${match.id}-${match.prompt}`} className="border-b border-term-border/50 pb-2">
+            <button className="text-left text-term-amber" onClick={() => setOpen(open === match.id ? null : match.id)}>{match.project}/{match.id.slice(0, 8)}</button>
+            <div className="text-term-muted break-words">{match.prompt}</div>
+            {open === match.id && <SessionDrill id={match.id} />}
+          </div>
+        ))}</div>}
+      </Panel>
+
+      {days.length === 0 && <Empty />}
+      {days.map((d) => (
         <Panel key={d.day} title={d.day}>
           <div className="grid gap-2">
             {d.sessions.map((s) => (
-              <div key={s.id} className="border-b border-term-border/50 pb-2 last:border-0">
-                <button className="w-full text-left flex justify-between items-center gap-3" onClick={() => setOpen(open === s.id ? null : s.id)}>
-                  <span className="flex-1 min-w-0 truncate" title={`${s.project}/${s.id}`}>
+              <div key={s.id} className="min-w-0 border-b border-term-border/50 pb-2 last:border-0">
+                <button className="w-full min-w-0 text-left flex flex-col items-start gap-1 sm:flex-row sm:justify-between sm:items-center sm:gap-3" onClick={() => setOpen(open === s.id ? null : s.id)}>
+                  <span className="w-full flex-1 min-w-0 truncate sm:w-auto" title={`${s.project}/${s.id}`}>
                     <span className="text-term-muted text-xs">{s.project}/</span>
                     <span className="text-term-amber">{s.id.slice(0, 8)}</span>
                   </span>
-                  <span className="flex-none flex gap-3 text-xs text-term-muted">
+                  <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-term-muted">
                     <span>{s.turns} turnos</span>
                     <span>{s.models.length} modelos</span>
                     <span className="text-term-amber">{usd(s.costUsd)}</span>
@@ -95,6 +168,7 @@ export function Actividad() {
           </div>
         </Panel>
       ))}
+      {data.nextCursor && <button className="btn justify-self-start" onClick={() => setCursor(data.nextCursor)}>Cargar más</button>}
     </div>
   );
 }

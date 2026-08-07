@@ -3,7 +3,7 @@
  * exposicion. Ingesta incremental al arrancar y expone /api/summary. Sirve el
  * build del frontend desde web/dist si existe.
  */
-import Fastify from "fastify";
+import Fastify, { LogController } from "fastify";
 import fastifyStatic from "@fastify/static";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
@@ -16,21 +16,34 @@ import { getSummary } from "./lib/summary.js";
 import { loadConfig, saveConfig, type Config } from "./lib/config.js";
 import { discoverCatalog, getSkills } from "./lib/skills.js";
 import { scanMemory } from "./lib/memory.js";
-import { getActivity, getSessionDetail, getSessionTurns } from "./lib/activity.js";
+import { getActivityPage, getSessionDetail, getSessionTurns, searchPrompts } from "./lib/activity.js";
 import { getWaste } from "./lib/waste.js";
 import { writeReport } from "./lib/report.js";
+import { exportCsv, getExportData } from "./lib/export.js";
 
 const HOST = "127.0.0.1";
-const PORT = 8081;
+const PORT = Number(process.env.PORT ?? 8081);
 
-export async function buildServer() {
-  const db = openDb(defaultDbPath());
+export interface ServerOptions {
+  dbPath?: string;
+  configPath?: string;
+  pricingPath?: string;
+  catalogRoots?: { claudeRoot?: string; codexRoot?: string };
+}
+
+export async function buildServer(options: ServerOptions = {}) {
+  const db = openDb(options.dbPath ?? defaultDbPath());
   // Estado mutable: pricing/config se pueden editar desde Configuracion.
-  let pricing: Pricing = await loadPricing();
-  let config: Config = await loadConfig();
-  const catalog = await discoverCatalog(); // read-only, una vez al arrancar
+  let pricing: Pricing = await loadPricing(options.pricingPath);
+  let config: Config = await loadConfig(options.configPath);
+  const catalogRoots = () => {
+    if (options.catalogRoots) return options.catalogRoots;
+    const roots = rootsFromConfig(config.agentPaths);
+    return { claudeRoot: roots.projectsRoot ? dirname(roots.projectsRoot) : undefined, codexRoot: roots.codexRoot };
+  };
+  let catalog = await discoverCatalog(catalogRoots());
 
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" }, logController: new LogController({ disableRequestLogging: true }) });
 
   app.get("/api/health", async () => ({ ok: true }));
 
@@ -44,7 +57,38 @@ export async function buildServer() {
 
   app.get("/api/memory", async () => scanMemory(undefined, { staleDays: config.staleDays }));
 
-  app.get("/api/activity", async () => getActivity(db, config.timeZone));
+  app.get("/api/activity", async (req, reply) => {
+    const q = req.query as { cursor?: string; limit?: string; project?: string; agent?: string; model?: string };
+    try {
+      return getActivityPage(db, { ...q, limit: q.limit ? Number(q.limit) : undefined }, config.timeZone);
+    } catch (err) {
+      reply.code(400);
+      return { error: (err as Error).message };
+    }
+  });
+
+  app.get("/api/activity/search", async (req, reply) => {
+    const q = req.query as { q?: string; limit?: string; project?: string; agent?: string; model?: string };
+    try {
+      return { results: await searchPrompts(db, q.q ?? "", q.limit ? Number(q.limit) : undefined, q) };
+    } catch (err) {
+      reply.code(400);
+      return { error: (err as Error).message };
+    }
+  });
+
+  app.get("/api/export", async (req, reply) => {
+    const { format = "json" } = req.query as { format?: string };
+    if (format !== "json" && format !== "csv") {
+      reply.code(400);
+      return { error: "format debe ser csv o json" };
+    }
+    const data = getExportData(db);
+    const extension = format === "csv" ? "csv" : "json";
+    reply.header("Content-Disposition", `attachment; filename=\"motor-agentico-${new Date().toISOString().slice(0, 10)}.${extension}\"`);
+    if (format === "csv") return reply.type("text/csv; charset=utf-8").send(exportCsv(data));
+    return reply.type("application/json; charset=utf-8").send(data);
+  });
 
   app.get("/api/waste", async () => getWaste(db, pricing, config.waste));
 
@@ -82,15 +126,21 @@ export async function buildServer() {
   });
 
   app.get("/api/config", async () => config);
-  app.put("/api/config", async (req) => {
-    config = await saveConfig(req.body as Partial<Config>);
-    return config;
+  app.put("/api/config", async (req, reply) => {
+    try {
+      config = await saveConfig(req.body as Partial<Config>, options.configPath);
+      catalog = await discoverCatalog(catalogRoots());
+      return { ok: true, config };
+    } catch (err) {
+      reply.code(400);
+      return { ok: false, error: (err as Error).message };
+    }
   });
 
   app.get("/api/pricing", async () => pricing);
   app.put("/api/pricing", async (req, reply) => {
     try {
-      pricing = await savePricing(req.body as Pricing);
+      pricing = await savePricing(req.body as Pricing, options.pricingPath);
       return { ok: true, pricing, note: "rebuild para recalcular costos ya ingeridos" };
     } catch (err) {
       reply.code(400);
@@ -123,10 +173,7 @@ async function main() {
     ...rootsFromConfig(config.agentPaths),
   });
   await writeReport(summary, { durationMs: Date.now() - t0 });
-  console.log(
-    `Ingesta: ${summary.files} archivos · ${summary.filesChanged} cambiados · ${summary.eventsInserted} eventos nuevos · ${summary.memories} memorias` +
-      (summary.unknownModels.length ? ` · ${summary.unknownModels.length} modelos sin tarifa` : ""),
-  );
+  app.log.info({ event: "ingest_complete", files: summary.files, filesChanged: summary.filesChanged, eventsInserted: summary.eventsInserted, memories: summary.memories, unknownModels: summary.unknownModels.length }, "Ingesta completa");
 
   try {
     await app.listen({ host: HOST, port: PORT });
@@ -134,17 +181,24 @@ async function main() {
     // El fallo más común al arrancar: ya hay un dashboard corriendo. El stack
     // crudo de EADDRINUSE no dice qué hacer; esto sí.
     if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
-      console.error(
-        `\n⚠ El puerto ${PORT} ya está en uso — probablemente el dashboard ya está corriendo.\n` +
-          `  Abrilo en http://${HOST}:${PORT}\n` +
-          `  Si quedó un proceso colgado, cerralo con:\n` +
-          `    kill $(ss -ltnp 'sport = :${PORT}' 2>/dev/null | grep -oP 'pid=\\K[0-9]+')\n`,
-      );
+      app.log.error({ event: "listen_failed", code: "EADDRINUSE", port: PORT }, "El puerto ya está en uso");
+      await app.close();
       process.exit(1);
     }
     throw err;
   }
-  console.log(`Motor agentico escuchando en http://${HOST}:${PORT}`);
+  app.log.info({ event: "listening", host: HOST, port: PORT }, "Motor agentico escuchando");
+
+  let closing = false;
+  const close = async (signal: "SIGINT" | "SIGTERM") => {
+    if (closing) return;
+    closing = true;
+    app.log.info({ event: "shutdown", signal }, "Cierre limpio");
+    await app.close();
+    process.exit(0);
+  };
+  process.once("SIGINT", () => void close("SIGINT"));
+  process.once("SIGTERM", () => void close("SIGTERM"));
 }
 
 // Arranca solo si se ejecuta directo (no al importar en tests).

@@ -25,9 +25,9 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <style>{INLINE_STYLES}</style>
-      <header className="border-b border-term-border px-4 py-3 flex items-center gap-4 sticky top-0 bg-term-bg z-10">
-        <span className="text-term-amber font-bold">▎motor agéntico</span>
-        <nav className="flex gap-1 text-sm">
+      <header className="border-b border-term-border px-3 py-3 flex flex-wrap items-center gap-2 sticky top-0 bg-term-bg z-10">
+        <span className="text-term-amber font-bold whitespace-nowrap">▎motor agéntico</span>
+        <nav className="order-3 w-full overflow-x-auto flex gap-1 text-sm sm:order-none sm:w-auto">
           {TABS.map(([name], i) => (
             <button
               key={name}
@@ -40,7 +40,7 @@ export default function App() {
         </nav>
         <RefreshControl />
       </header>
-      <main className="p-4 max-w-6xl mx-auto">
+      <main className="p-3 sm:p-4 max-w-6xl mx-auto overflow-x-hidden">
         <Active />
       </main>
     </div>

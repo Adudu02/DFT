@@ -41,6 +41,7 @@ export interface SkillRow {
   savedUsd: number;
   minutesPerUse: number;
   inCatalog: boolean;
+  availableTo: string[];
   agents: { agent: string; uses: number; savedUsd: number }[];
 }
 
@@ -78,6 +79,20 @@ export interface ActSession {
 export interface ActivityDay {
   day: string;
   sessions: ActSession[];
+}
+
+export interface ActivityPage {
+  days: ActivityDay[];
+  nextCursor: string | null;
+}
+
+export interface PromptSearchResult {
+  id: string;
+  project: string;
+  agent: string;
+  startedAt: string | null;
+  endedAt: string | null;
+  prompt: string;
 }
 
 export interface SessionDetail {

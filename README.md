@@ -12,7 +12,8 @@ Dashboard local de costos/actividad de agentes. Lee transcripts de Claude Code
 
 ## Inicio rápido (2 pasos)
 
-Requiere **Node.js ≥ 22.5** (por `node:sqlite`) y **pnpm** (`corepack enable pnpm`).
+Requiere **Node.js ≥ 20** y **pnpm** (`corepack enable pnpm`). SQLite usa
+`better-sqlite3`, con WAL y compatibilidad directa con la caché existente.
 
 ```bash
 pnpm install
@@ -57,14 +58,35 @@ pnpm serve          # API + UI en http://127.0.0.1:8081 (ingesta incremental al 
 pnpm dev            # serve + Vite dev (frontend con HMR en :5173, proxy /api → :8081)
 pnpm build:web      # build de producción del frontend a web/dist (lo sirve `serve`)
 pnpm test           # vitest
+pnpm lint           # Biome, solo comprobación (no modifica archivos)
 pnpm typecheck      # tsc --noEmit
 ```
 
 ## Estado
 
+### Roadmap medio — completado (2026-08-05)
+
+- SQLite usa `better-sqlite3` con WAL, índices de actividad y migración compatible
+  con la caché previa; el servidor cierra una sola vez ante `SIGINT` o `SIGTERM`.
+- `PUT /api/config` y `PUT /api/pricing` validan datos antes de persistirlos y
+  responden `400` con un error claro. La UI muestra ese error.
+- La sincronización de memorias hace upsert solo de los nodos cambiados y elimina
+  exclusivamente los que desaparecieron de la fuente.
+- Actividad admite cursor estable, límite máximo 100 y filtros `project`, `agent`
+  y `model`; la UI permite cargar más, buscar prompts en vivo y exportar métricas.
+- Las exportaciones CSV/JSON incluyen sesiones y eventos de uso, nunca prompts.
+- Skills combina los catálogos de Claude Code y Codex; el escaneo Codex es recursivo
+  bajo `~/.codex/skills`, excluye `vendor_imports` y muestra disponibilidad por agente.
+- Biome ejecuta `pnpm lint` en modo comprobación y CI corre lint, typecheck, tests y
+  build. La interfaz se verificó a 320 px, 375 px y escritorio.
+
+`App.tsx` ya estaba dividido en shell, páginas, hooks y componentes, por lo que no
+requirió una refactorización adicional. `data/config.json` incluye el bloque completo
+`waste`, incluidos sus `downgradePaths`.
+
 - **F1** — adapter Claude Code + motor de costos + CLI. Dedup por `message.id:requestId`,
   skip `<synthetic>`, modelo sin tarifa = costo 0 + badge.
-- **F2** — SQLite (`node:sqlite`, sin deps nativas) + ingesta incremental (offset por
+- **F2** — SQLite (`better-sqlite3`, WAL) + ingesta incremental (offset por
   archivo) + servidor Fastify (bind solo `127.0.0.1`) + página Inicio (Vite/React/
   Tailwind/Recharts, tema terminal ámbar/negro): gasto 28d + sparkline, actividad,
   racha, participación por modelo (donut), toggle Suscripción↔Tokens.
@@ -77,7 +99,8 @@ pnpm typecheck      # tsc --noEmit
   nodos memoria/índice/sesión/proyecto, aristas por `[[wikilink]]`/link md (referencia),
   `originSessionId` (origen) e índice (contiene). Página Memoria = grafo force-directed
   (SVG, simulación propia, brillo=recencia, amarillo=obsoleto, contador N·M). Página
-  Actividad = timeline de sesiones por día con drill-down (desglose por modelo).
+  Actividad = timeline paginado y filtrable por sesión/día con drill-down (desglose
+  por modelo), búsqueda puntual de prompts desde el transcript y exportación de métricas.
 
 - **F6** — auto-mejora + integridad. Test de humo (`test/integrity.test.ts`):
   hashea el árbol de fuentes (path·size·mtime) antes/después de un ciclo de
@@ -118,9 +141,16 @@ Pendiente: F5 adapter para más agentes si aparecen fuentes con transcript propi
 ## API
 
 `GET /api/summary` · `GET /api/skills` · `GET /api/memory` · `GET /api/activity` ·
-`GET /api/waste` · `GET /api/session/:id` · `GET|PUT /api/config` · `GET|PUT /api/pricing` ·
-`POST /api/rebuild` · `GET /api/health`. Editar pricing → correr `rebuild` para
-recalcular costos ya materializados.
+`GET /api/activity/search` · `GET /api/export?format=csv|json` · `GET /api/waste` ·
+`GET /api/session/:id` · `GET|PUT /api/config` · `GET|PUT /api/pricing` ·
+`POST /api/rebuild` · `GET /api/health`.
+
+`/api/activity` acepta `limit` (máximo 100), `cursor`, `project`, `agent` y `model`,
+y responde `{ days, nextCursor }`; usá `nextCursor` para la siguiente página.
+`/api/activity/search?q=texto` busca bajo demanda en transcripts de solo lectura y
+devuelve coincidencias limitadas sin escribir prompts en SQLite. `/api/export` incluye
+solo sesiones y eventos de uso; no exporta prompts. Editar pricing → correr `rebuild`
+para recalcular costos ya materializados.
 
 ## Costos
 

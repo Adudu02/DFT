@@ -12,6 +12,7 @@ export function Configuracion() {
   const [form, setForm] = useState<Config | null>(null);
   const [pricingText, setPricingText] = useState<string>("");
   const [msg, setMsg] = useState<string>("");
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     if (cfg) setForm(cfg);
   }, [cfg]);
@@ -21,21 +22,27 @@ export function Configuracion() {
   if (!form) return <Loading />;
 
   const saveConfig = async () => {
-    await fetch("/api/config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    setMsg("configuración guardada");
+    const response = await fetch("/api/config", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const result = await response.json();
+    setFailed(!response.ok);
+    setMsg(response.ok ? "configuración guardada" : `error: ${result.error ?? "configuración inválida"}`);
+    if (response.ok && result.config) setForm(result.config);
   };
   const savePricing = async () => {
     try {
       const body = JSON.parse(pricingText);
       const r = await fetch("/api/pricing", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const j = await r.json();
+      setFailed(!r.ok);
       setMsg(j.ok ? "pricing guardado — corre rebuild para recalcular" : "error: " + j.error);
     } catch (e) {
+      setFailed(true);
       setMsg("JSON inválido: " + String(e));
     }
   };
   const rebuild = async () => {
     setMsg("reingiriendo…");
+    setFailed(false);
     const r = await fetch("/api/rebuild", { method: "POST" });
     const j = await r.json();
     setMsg(`rebuild: ${j.skillsInserted ?? 0} usos de skills · ${j.eventsInserted} eventos · ${j.memories} memorias`);
@@ -155,7 +162,7 @@ export function Configuracion() {
         </div>
       </Panel>
 
-      {msg && <div className="md:col-span-2 text-xs text-term-green">{msg}</div>}
+      {msg && <div className={`md:col-span-2 text-xs ${failed ? "text-term-red" : "text-term-green"}`}>{msg}</div>}
     </div>
   );
 }

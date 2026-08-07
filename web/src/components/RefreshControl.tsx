@@ -28,7 +28,7 @@ export function RefreshControl() {
   useEffect(() => setAgo(0), [last]);
 
   return (
-    <div className="ml-auto flex items-center gap-2 text-xs">
+    <div className="ml-auto flex items-center gap-2 text-xs whitespace-nowrap">
       <span className="text-term-muted">
         {busy ? "actualizando…" : last ? `hace ${ago}s` : "sin refrescar"}
       </span>

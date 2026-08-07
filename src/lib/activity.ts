@@ -26,6 +26,19 @@ export interface ActivityDay {
   sessions: ActivitySession[];
 }
 
+export interface ActivityPage {
+  days: ActivityDay[];
+  nextCursor: string | null;
+}
+
+export interface ActivityFilters {
+  cursor?: string;
+  limit?: number;
+  project?: string;
+  agent?: string;
+  model?: string;
+}
+
 export interface ModelBreakdown {
   model: string;
   input: number;
@@ -46,31 +59,145 @@ export interface SessionDetail {
   models: ModelBreakdown[];
 }
 
-/** Sesiones agrupadas por día (día = substr de ended_at), más reciente primero. */
-export function getActivity(db: DB, timeZone?: string): ActivityDay[] {
-  const rows = db
-    .prepare(
-      `SELECT s.id, s.project, s.agent, s.started_at AS startedAt, s.ended_at AS endedAt, s.turns,
-              COALESCE(SUM(u.cost_usd), 0) AS costUsd,
-              GROUP_CONCAT(DISTINCT u.model) AS models
-       FROM sessions s LEFT JOIN usage_events u ON u.session_id = s.id
-       GROUP BY s.id ORDER BY s.ended_at DESC`,
-    )
-    .all() as (Omit<ActivitySession, "models"> & { models: string | null })[];
+function encodeCursor(endedAt: string, id: string): string {
+  return Buffer.from(JSON.stringify([endedAt, id])).toString("base64url");
+}
 
+function decodeCursor(cursor?: string): [string, string] | null {
+  if (!cursor) return null;
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64url").toString("utf8"));
+    return Array.isArray(parsed) && typeof parsed[0] === "string" && typeof parsed[1] === "string" ? [parsed[0], parsed[1]] : null;
+  } catch {
+    return null;
+  }
+}
+
+function toDays(rows: (ActivitySession & { orderAt: string })[], timeZone?: string): ActivityDay[] {
   const byDay = new Map<string, ActivityDay>();
   for (const r of rows) {
-    const src = r.endedAt ?? r.startedAt ?? "";
-    const day = src ? dayInTz(src, timeZone) : "";
+    const day = r.orderAt ? dayInTz(r.orderAt, timeZone) : "";
     if (!day) continue;
     let d = byDay.get(day);
     if (!d) {
       d = { day, sessions: [] };
       byDay.set(day, d);
     }
-    d.sessions.push({ ...r, models: r.models ? r.models.split(",") : [] });
+    d.sessions.push({
+      id: r.id,
+      project: r.project,
+      agent: r.agent,
+      startedAt: r.startedAt,
+      endedAt: r.endedAt,
+      turns: r.turns,
+      costUsd: r.costUsd,
+      models: r.models,
+    });
   }
   return [...byDay.values()].sort((a, b) => b.day.localeCompare(a.day));
+}
+
+/** Sesiones paginadas, filtrables y agrupadas por día; cursor = ended_at + id. */
+export function getActivityPage(db: DB, filters: ActivityFilters = {}, timeZone?: string): ActivityPage {
+  const limit = Number.isFinite(filters.limit) ? Math.max(1, Math.min(Math.floor(filters.limit as number), 100)) : 50;
+  const clauses: string[] = [];
+  const args: (string | number)[] = [];
+  if (filters.project) {
+    clauses.push("s.project = ?");
+    args.push(filters.project);
+  }
+  if (filters.agent) {
+    clauses.push("s.agent = ?");
+    args.push(filters.agent);
+  }
+  if (filters.model) {
+    clauses.push("EXISTS (SELECT 1 FROM usage_events um WHERE um.session_id = s.id AND um.model = ?)");
+    args.push(filters.model);
+  }
+  const cursor = decodeCursor(filters.cursor);
+  if (filters.cursor && !cursor) throw new Error("cursor inválido");
+  if (cursor) {
+    clauses.push("(COALESCE(s.ended_at, s.started_at, '') < ? OR (COALESCE(s.ended_at, s.started_at, '') = ? AND s.id < ?))");
+    args.push(cursor[0], cursor[0], cursor[1]);
+  }
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const rows = db
+    .prepare(
+      `SELECT s.id, s.project, s.agent, s.started_at AS startedAt, s.ended_at AS endedAt, s.turns,
+              COALESCE(s.ended_at, s.started_at, '') AS orderAt,
+              COALESCE(SUM(u.cost_usd), 0) AS costUsd,
+              GROUP_CONCAT(DISTINCT u.model) AS models
+       FROM sessions s LEFT JOIN usage_events u ON u.session_id = s.id
+       ${where}
+       GROUP BY s.id ORDER BY orderAt DESC, s.id DESC LIMIT ?`,
+    )
+    .all(...args, limit + 1) as (Omit<ActivitySession, "models"> & { orderAt: string; models: string | null })[];
+  const pageRows = rows.slice(0, limit).map((r) => ({ ...r, models: r.models ? r.models.split(",") : [] }));
+  const last = pageRows.at(-1);
+  return { days: toDays(pageRows, timeZone), nextCursor: rows.length > limit && last ? encodeCursor(last.orderAt, last.id) : null };
+}
+
+/** Compatibilidad para los consumidores internos que aún necesitan todo. */
+export function getActivity(db: DB, timeZone?: string): ActivityDay[] {
+  return getActivityPage(db, { limit: 100 }, timeZone).days;
+}
+
+export interface PromptSearchResult {
+  id: string;
+  project: string;
+  agent: string;
+  startedAt: string | null;
+  endedAt: string | null;
+  prompt: string;
+}
+
+/** Busca texto en transcripts existentes sin guardar prompts en SQLite. */
+export async function searchPrompts(
+  db: DB,
+  query: string,
+  limit = 30,
+  filters: Pick<ActivityFilters, "project" | "agent" | "model"> = {},
+): Promise<PromptSearchResult[]> {
+  const needle = query.trim().toLocaleLowerCase();
+  if (needle.length < 2) throw new Error("la búsqueda debe tener al menos 2 caracteres");
+  const clauses = ["source_path IS NOT NULL"];
+  const args: string[] = [];
+  if (filters.project) {
+    clauses.push("project = ?");
+    args.push(filters.project);
+  }
+  if (filters.agent) {
+    clauses.push("agent = ?");
+    args.push(filters.agent);
+  }
+  if (filters.model) {
+    clauses.push("EXISTS (SELECT 1 FROM usage_events um WHERE um.session_id = sessions.id AND um.model = ?)");
+    args.push(filters.model);
+  }
+  const sessions = db
+    .prepare(
+      `SELECT id, project, agent, started_at AS startedAt, ended_at AS endedAt, source_path AS path
+       FROM sessions WHERE ${clauses.join(" AND ")}
+       ORDER BY COALESCE(ended_at, started_at) DESC, id DESC LIMIT 200`,
+    )
+    .all(...args) as { id: string; project: string; agent: string; startedAt: string | null; endedAt: string | null; path: string }[];
+  const max = Number.isFinite(limit) ? Math.max(1, Math.min(Math.floor(limit), 50)) : 30;
+  const results: PromptSearchResult[] = [];
+  for (const session of sessions) {
+    if (results.length >= max) break;
+    let raw: string;
+    try {
+      raw = await readFileRO(session.path);
+    } catch {
+      continue;
+    }
+    for (const item of extractPrompts(raw)) {
+      if (!item.prompt.toLocaleLowerCase().includes(needle)) continue;
+      results.push({ ...session, prompt: item.prompt.slice(0, 300) });
+      if (results.length >= max) break;
+    }
+  }
+  return results;
 }
 
 export interface SessionTurn {
