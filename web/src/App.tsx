@@ -26,7 +26,7 @@ export default function App() {
     <div className="min-h-screen">
       <style>{INLINE_STYLES}</style>
       <header className="border-b border-term-border px-4 sm:px-8 py-4 flex flex-wrap items-center gap-x-6 gap-y-3 sticky top-0 bg-term-bg/95 backdrop-blur z-10">
-        <span className="brand text-2xl sm:text-3xl text-term-text whitespace-nowrap mr-auto">motor agéntico</span>
+        <span className="brand text-2xl sm:text-3xl text-term-text whitespace-nowrap mr-auto">How much you messed up?</span>
         <nav className="order-3 w-full overflow-x-auto flex gap-5 text-sm sm:order-none sm:w-auto">
           {TABS.map(([name], i) => (
             <button
