@@ -1,7 +1,9 @@
 /** Entry: borra ./data/motor.db y reingesta todo (PLAN §1.3, comando `rebuild`). */
 import { rebuild } from "./ingest.js";
 import { writeReport } from "./lib/report.js";
+import { ensureUserData } from "./lib/paths.js";
 
+ensureUserData();
 const t0 = Date.now();
 const summary = await rebuild();
 const durationMs = Date.now() - t0;

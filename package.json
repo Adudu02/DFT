@@ -1,9 +1,22 @@
 {
   "name": "motor-agentico",
   "version": "1.0.0",
-  "private": true,
   "type": "module",
   "description": "Dashboard local (solo lectura) de costos/actividad de agentes: adapters Claude Code + Codex, motor de costos equiv-API, detección de fugas de tokens y ahorro, memoria y skills. Bindea solo a 127.0.0.1.",
+  "bin": {
+    "motor-agentico": "bin/motor-agentico.mjs"
+  },
+  "files": [
+    "bin",
+    "dist",
+    "web/dist",
+    "data/pricing.json",
+    "README.md",
+    "SECURITY.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node scripts/start.mjs",
     "launcher": "bash scripts/install-launcher.sh",
@@ -14,6 +27,9 @@
     "dev": "concurrently -k -n api,web \"pnpm serve\" \"pnpm web\"",
     "web": "vite --config web/vite.config.ts",
     "build:web": "vite --config web/vite.config.ts build",
+    "build:server": "tsc -p tsconfig.build.json",
+    "build": "pnpm build:web && pnpm build:server",
+    "prepublishOnly": "pnpm build",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "biome lint src test web/src",

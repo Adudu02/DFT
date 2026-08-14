@@ -1,5 +1,8 @@
 node_modules/
 web/dist/
+dist/
+*.tgz
+.playwright-mcp/
 data/motor.db
 data/motor.db-wal
 data/motor.db-shm

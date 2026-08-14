@@ -3,8 +3,9 @@
  * reconstruible en ./data/motor.db — el schema se crea si no existe.
  */
 import Database from "better-sqlite3";
-import { fileURLToPath } from "node:url";
+import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { dataDir } from "./paths.js";
 
 export type DB = Database.Database;
 
@@ -64,6 +65,7 @@ CREATE TABLE IF NOT EXISTS ingest_offsets (
 
 /** Abre (o crea) la DB en `path` y asegura el schema. */
 export function openDb(path: string): DB {
+  mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec(SCHEMA);
@@ -78,8 +80,7 @@ export function openDb(path: string): DB {
   return db;
 }
 
-/** Ruta por defecto de la DB: ./data/motor.db en la raíz del repo. */
+/** Ruta por defecto de la DB: `<cwd>/data/motor.db`. */
 export function defaultDbPath(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..", "..", "data", "motor.db");
+  return join(dataDir(), "motor.db");
 }

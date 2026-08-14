@@ -3,9 +3,9 @@
  * en UnknownModels (badge visible en UI). Nunca se estima en silencio (PLAN §2).
  */
 import { writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { readFileRO } from "./fs-readonly.js";
+import { dataDir } from "./paths.js";
 
 export interface Rate {
   input: number;
@@ -41,8 +41,7 @@ export function validatePricing(value: unknown): Pricing {
 }
 
 function defaultPricingPath(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..", "..", "data", "pricing.json");
+  return join(dataDir(), "pricing.json");
 }
 
 export async function loadPricing(path = defaultPricingPath()): Promise<Pricing> {

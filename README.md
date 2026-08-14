@@ -60,7 +60,17 @@ El registry desacopla las fuentes: añadir un cuarto agente = un adapter nuevo
 auto-mejora lee reportes y propone cambios **solo sobre este repo** — nunca
 reescribe los transcripts de origen.
 
-## Inicio rápido (2 pasos)
+## Pruébalo (sin clonar)
+
+```bash
+npx motor-agentico
+```
+
+Levanta el dashboard en `http://127.0.0.1:8081`. Detecta tus transcripts (Claude
+Code, Codex, Qwen) en solo lectura y escribe su estado en `./data` del directorio
+donde lo corras. Reporte de fugas por terminal: `npx motor-agentico --waste`.
+
+## Inicio rápido (desde el repo)
 
 Requiere **Node.js ≥ 20** y **pnpm** (`corepack enable pnpm`). SQLite usa
 `better-sqlite3`, con WAL y compatibilidad directa con la caché existente.

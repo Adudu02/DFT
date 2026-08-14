@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { openDb, defaultDbPath } from "./lib/db.js";
+import { ensureUserData } from "./lib/paths.js";
 import { ingestAll } from "./ingest.js";
 import { rootsFromConfig } from "./adapters/registry.js";
 import { loadPricing, savePricing, type Pricing } from "./lib/pricing.js";
@@ -162,7 +163,8 @@ export async function buildServer(options: ServerOptions = {}) {
   return { app, db, pricing, config };
 }
 
-async function main() {
+export async function main() {
+  ensureUserData();
   const { app, db, pricing, config } = await buildServer();
 
   // Ingesta incremental al arrancar (fuentes read-only).

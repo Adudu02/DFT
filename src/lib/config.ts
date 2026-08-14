@@ -4,9 +4,9 @@
  * sobre defaults; nunca lanza si falta el archivo.
  */
 import { writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { readFileRO } from "./fs-readonly.js";
+import { dataDir } from "./paths.js";
 import { DEFAULT_WASTE, type WasteThresholds } from "./waste.js";
 
 export interface Config {
@@ -78,8 +78,7 @@ export function validateConfig(value: unknown): Partial<Config> {
 }
 
 function defaultConfigPath(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..", "..", "data", "config.json");
+  return join(dataDir(), "config.json");
 }
 
 function merge(partial: Partial<Config>): Config {

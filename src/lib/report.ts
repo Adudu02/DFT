@@ -6,9 +6,9 @@
  * (nunca las fuentes).
  */
 import { mkdir, writeFile, readdir } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { readFileRO } from "./fs-readonly.js";
+import { dataDir } from "./paths.js";
 import type { IngestSummary } from "../ingest.js";
 
 export interface IngestReport extends IngestSummary {
@@ -18,8 +18,7 @@ export interface IngestReport extends IngestSummary {
 }
 
 function defaultReportsDir(): string {
-  const here = dirname(fileURLToPath(import.meta.url));
-  return join(here, "..", "..", "data", "reports");
+  return join(dataDir(), "reports");
 }
 
 export async function writeReport(

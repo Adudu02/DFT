@@ -15,6 +15,7 @@ import { openDb, defaultDbPath } from "./lib/db.js";
 import { ingestAll } from "./ingest.js";
 import { loadConfig } from "./lib/config.js";
 import { getWaste, type WasteFinding } from "./lib/waste.js";
+import { ensureUserData } from "./lib/paths.js";
 import type { NormalizedSession } from "./adapters/types.js";
 
 interface Adapter {
@@ -123,6 +124,7 @@ async function runWaste(roots: { projectsRoot?: string; codexRoot: string }): Pr
 }
 
 async function main(): Promise<void> {
+  ensureUserData();
   const args = process.argv.slice(2);
   const wasteMode = args.includes("--waste");
   const rootArg = args.find((a) => !a.startsWith("--"));
