@@ -1,0 +1,25 @@
+{
+  "name": "motor-agentico-report",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Reporter de fugas de tokens para CI/terminal. Segundo consumidor de motor-agentico-core: sin servidor ni UI, exit-code por umbral.",
+  "license": "MIT",
+  "bin": {
+    "motor-agentico-report": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "pnpm build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "motor-agentico-core": "workspace:*"
+  }
+}

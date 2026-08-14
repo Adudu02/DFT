@@ -84,6 +84,12 @@ importers:
         specifier: ^9.6.0
         version: 9.6.0
 
+  packages/reporter:
+    dependencies:
+      motor-agentico-core:
+        specifier: workspace:*
+        version: link:../core
+
 packages:
 
   '@alloc/quick-lru@5.2.0':

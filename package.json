@@ -29,11 +29,12 @@
     "build:web": "vite --config web/vite.config.ts build",
     "build:server": "tsc -p tsconfig.build.json",
     "build:core": "pnpm --filter motor-agentico-core build",
-    "build": "pnpm build:core && pnpm build:web && pnpm build:server",
+    "build:report": "pnpm --filter motor-agentico-report build",
+    "build": "pnpm build:core && pnpm build:report && pnpm build:web && pnpm build:server",
     "prepublishOnly": "pnpm build",
-    "test": "pnpm --filter motor-agentico-core test && vitest run",
+    "test": "pnpm --filter motor-agentico-core test && pnpm --filter motor-agentico-report test && vitest run",
     "test:watch": "vitest",
-    "lint": "biome lint src test packages/core/src packages/core/test web/src",
+    "lint": "biome lint src test packages/core/src packages/core/test packages/reporter/src packages/reporter/test web/src",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -6,6 +6,8 @@
       "test/**/*.ts",
       "packages/core/src/**/*.ts",
       "packages/core/test/**/*.ts",
+      "packages/reporter/src/**/*.ts",
+      "packages/reporter/test/**/*.ts",
       "web/src/**/*.ts",
       "web/src/**/*.tsx"
     ]

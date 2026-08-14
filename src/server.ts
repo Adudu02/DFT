@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { openDb, defaultDbPath } from "motor-agentico-core";
-import { ensureUserData } from "./paths.js";
+import { ensureUserData } from "motor-agentico-core";
 import { ingestAll } from "motor-agentico-core";
 import { rootsFromConfig } from "motor-agentico-core";
 import { loadPricing, savePricing, type Pricing } from "motor-agentico-core";

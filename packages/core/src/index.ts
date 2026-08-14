@@ -11,9 +11,9 @@
  *   const { findings } = getWaste(openDb(defaultDbPath()), ...);
  */
 
-// Configuración de rutas de estado (lo único que el core necesita saber del host).
-// ensureUserData() NO se exporta: es de la capa app (siembra + cwd).
-export { dataDir, setDataDir, packagedPricingPath } from "./lib/paths.js";
+// Configuración de rutas de estado + preparación del directorio (setup del motor,
+// compartido por todos los consumidores: app, reporter de CI, etc.).
+export { dataDir, setDataDir, packagedPricingPath, ensureUserData } from "./lib/paths.js";
 
 // Fuentes: adapters (clases + parsers) + registro + ingesta.
 export * from "./adapters/types.js";

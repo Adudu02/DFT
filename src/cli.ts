@@ -15,7 +15,7 @@ import { openDb, defaultDbPath } from "motor-agentico-core";
 import { ingestAll } from "motor-agentico-core";
 import { loadConfig } from "motor-agentico-core";
 import { getWaste, type WasteFinding } from "motor-agentico-core";
-import { ensureUserData } from "./paths.js";
+import { ensureUserData } from "motor-agentico-core";
 import type { NormalizedSession } from "motor-agentico-core";
 
 interface Adapter {
