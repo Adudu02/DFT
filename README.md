@@ -97,6 +97,9 @@ Ver la página **Ayuda** en la UI.
   momento de la consulta y no los persiste en ningún lado.
 - **Sin red.** El servidor bindea solo a `127.0.0.1:8081`, sin auth. No exponerlo
   a la LAN ni detrás de un proxy público.
+- **3 dependencias de producción** (`fastify`, `@fastify/static`, `better-sqlite3`)
+  y runtime sin vulnerabilidades en `pnpm audit`. Modelo de amenazas, postura de
+  dependencias y reporte de fallos en [`SECURITY.md`](SECURITY.md).
 
 ## Comandos
 
