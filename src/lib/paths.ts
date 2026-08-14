@@ -12,9 +12,21 @@ import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-/** Estado escribible del usuario: `<cwd>/data`. */
+// Raíz del estado escribible. Default = `<cwd>/data` (capa app). Un consumidor
+// que use el motor como librería la fija con setDataDir() antes de ingerir.
+// ponytail: estado global de módulo, suficiente para un proceso single-tenant.
+// Si algún día hay que ingerir varios roots a la vez en el mismo proceso, pasar
+// el path explícito a openDb/loadPricing/loadConfig (ya lo aceptan) en vez de esto.
+let dataRoot: string | null = null;
+
+/** Estado escribible del usuario (default `<cwd>/data`, override con setDataDir). */
 export function dataDir(): string {
-  return join(process.cwd(), "data");
+  return dataRoot ?? join(process.cwd(), "data");
+}
+
+/** Fija la raíz del estado escribible (para embeber el motor como librería). */
+export function setDataDir(dir: string): void {
+  dataRoot = dir;
 }
 
 /** `data/` empaquetado junto al código: defaults de fábrica, solo lectura. */
