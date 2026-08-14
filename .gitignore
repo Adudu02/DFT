@@ -15,3 +15,9 @@ data/config.json
 # editor y material de diseño local (no versionar)
 .vscode/
 Nocturne dashboard redesign/
+
+# docs de trabajo / portfolio (no forman parte del repo)
+motor-agentico-polish-plan.md
+case-study.md
+docs-onboarding.md
+docs-onboarding.html
