@@ -7,6 +7,13 @@
   "bin": {
     "motor-agentico": "bin/motor-agentico.mjs"
   },
+  "exports": {
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "bin",
     "dist",
@@ -29,7 +36,8 @@
     "web": "vite --config web/vite.config.ts",
     "build:web": "vite --config web/vite.config.ts build",
     "build:server": "tsc -p tsconfig.build.json",
-    "build": "pnpm build:web && pnpm build:server",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build": "pnpm build:web && pnpm build:server && pnpm build:types",
     "prepublishOnly": "pnpm build",
     "test": "vitest run",
     "test:watch": "vitest",
