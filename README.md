@@ -6,6 +6,12 @@ Dashboard local de costos/actividad de agentes. Lee transcripts de Claude Code
 (`~/.claude/projects`) y Codex (`~/.codex`) en **solo lectura** y calcula el gasto
 "equivalente API", además de señalar fugas de tokens y cómo reducirlas.
 
+> **Ejemplo real** (`pnpm cli -- --waste` sobre transcripts propios): **98 fugas
+> detectadas, ~$310 de ahorro estimado**. La mayor: una sola sesión con 258 turnos
+> triviales corriendo en `claude-opus-4-8` cuando `claude-sonnet-5` bastaba —
+> **~$28 de sobrecosto en esa sesión**. El motor no solo mide el gasto: dice dónde
+> recortarlo, con el número.
+
 ## Principio
 
 `~/.claude`, `~/.codex` y otras fuentes = **SOLO LECTURA** (se abren con flag
