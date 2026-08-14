@@ -1,5 +1,7 @@
 # Motor Agéntico · v1.0.0
 
+[![CI](https://github.com/Adudu02/DFT/actions/workflows/ci.yml/badge.svg)](https://github.com/Adudu02/DFT/actions/workflows/ci.yml)
+
 Dashboard local de costos/actividad de agentes. Lee transcripts de Claude Code
 (`~/.claude/projects`) y Codex (`~/.codex`) en **solo lectura** y calcula el gasto
 "equivalente API", además de señalar fugas de tokens y cómo reducirlas.
@@ -36,8 +38,9 @@ Ver la página **Ayuda** en la UI.
 
 - **No usa claves API.** Calcula costo *equivalente API* desde conteos de tokens
   locales; nunca pide, recibe ni almacena credenciales.
-- **Fuentes intactas.** Todo con flag `'r'`; `test/integrity.test.ts` hashea el
-  árbol de fuentes antes/después de ingerir y exige que no cambie.
+- **Fuentes intactas.** Todo con flag `'r'`; [`test/integrity.test.ts`](test/integrity.test.ts)
+  hashea el árbol de fuentes antes/después de ingerir y exige que no cambie —
+  ve el test que lo garantiza, no solo esta afirmación.
 - **Lista blanca de lectura.** Solo `rollout-*.jsonl`, `*.jsonl` y memoria `*.md`.
   Nunca abre `~/.codex/auth.json`, `.env` ni archivos de credenciales.
 - **Solo métricas en la DB.** `./data/motor.db` guarda conteos de tokens, modelo y
