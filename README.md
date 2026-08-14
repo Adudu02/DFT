@@ -18,6 +18,44 @@ Dashboard local de costos/actividad de agentes. Lee transcripts de Claude Code
 `'r'`, ver `src/lib/fs-readonly.ts`). Todo estado propio (DB, reportes) vive en
 `./data/`.
 
+## Arquitectura
+
+```mermaid
+flowchart LR
+  subgraph src["Fuentes locales · SOLO LECTURA (flag 'r')"]
+    direction TB
+    CC["~/.claude/projects"]
+    CX["~/.codex"]
+    QW["~/.qwen/usage"]
+  end
+
+  subgraph engine["Motor · TypeScript"]
+    direction TB
+    REG["Adapters + registry<br/>claude-code · codex · qwen"]
+    ING["Ingesta incremental<br/>+ costo equiv-API (pricing.json)"]
+    DB[("SQLite · WAL<br/>./data/motor.db<br/>solo métricas, nunca prompts")]
+    REG --> ING --> DB
+  end
+
+  API["Fastify API<br/>/api/*"]
+  WEB["React + Vite<br/>web/dist"]
+  CLI["CLI<br/>pnpm cli -- --waste"]
+  IMP["Auto-mejora<br/>pnpm improve"]
+
+  CC --> REG
+  CX --> REG
+  QW --> REG
+  DB --> API --> WEB
+  DB --> CLI
+  DB -. report .-> RPT["./data/reports"] -.-> IMP
+  IMP -. solo este repo .-> REPO["código del proyecto"]
+```
+
+El registry desacopla las fuentes: añadir un cuarto agente = un adapter nuevo
+(`discover` / `deriveIds` / `parseLines`), sin tocar la ingesta ni la API. La
+auto-mejora lee reportes y propone cambios **solo sobre este repo** — nunca
+reescribe los transcripts de origen.
+
 ## Inicio rápido (2 pasos)
 
 Requiere **Node.js ≥ 20** y **pnpm** (`corepack enable pnpm`). SQLite usa
