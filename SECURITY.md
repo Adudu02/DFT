@@ -9,8 +9,8 @@ problema.
 ## Garantías de diseño
 
 - **Fuentes en solo lectura.** `~/.claude`, `~/.codex`, `~/.qwen` y demás fuentes
-  se abren siempre con flag `'r'` (ver `src/lib/fs-readonly.ts`). El test
-  [`test/integrity.test.ts`](test/integrity.test.ts) hashea el árbol de fuentes
+  se abren siempre con flag `'r'` (ver `packages/core/src/lib/fs-readonly.ts`). El test
+  [`packages/core/test/integrity.test.ts`](packages/core/test/integrity.test.ts) hashea el árbol de fuentes
   antes y después de ingerir y falla si algo cambió.
 - **Nunca toca credenciales.** Lista blanca de lectura: solo `rollout-*.jsonl`,
   `*.jsonl` y memoria `*.md`. Nunca abre `~/.codex/auth.json`, `.env` ni archivos
@@ -27,10 +27,12 @@ problema.
 
 ## Dependencias
 
-Superficie de ataque mínima por diseño: **3 dependencias de producción**
-(`fastify`, `@fastify/static`, `better-sqlite3`). El resto son herramientas de
-build/test (`vite`, `vitest`, `tailwind`…) que **no forman parte del runtime que
-se ejecuta** (`pnpm serve` sirve el `dist` ya compilado vía Fastify).
+Superficie de ataque mínima por diseño: **cuatro dependencias de producción en
+total**, repartidas por capa. La app (`motor-agentico`) usa `fastify` +
+`@fastify/static` y depende del motor; el motor (`motor-agentico-core`) usa solo
+`better-sqlite3`. El resto son herramientas de build/test (`vite`, `vitest`,
+`tailwind`…) que **no forman parte del runtime que se ejecuta** (`pnpm serve`
+sirve el `dist` ya compilado vía Fastify).
 
 Estado de `pnpm audit`:
 
