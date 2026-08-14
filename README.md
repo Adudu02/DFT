@@ -6,6 +6,10 @@ Dashboard local de costos/actividad de agentes. Lee transcripts de Claude Code
 (`~/.claude/projects`) y Codex (`~/.codex`) en **solo lectura** y calcula el gasto
 "equivalente API", además de señalar fugas de tokens y cómo reducirlas.
 
+![Dashboard — gasto equiv-API, participación por modelo y por agente](docs/img/dashboard-home.png)
+
+![Página Ahorro — fugas rankeadas con ahorro estimado (nombres de proyecto anonimizados)](docs/img/dashboard-waste.png)
+
 > **Ejemplo real** (`pnpm cli -- --waste` sobre transcripts propios): **98 fugas
 > detectadas, ~$310 de ahorro estimado**. La mayor: una sola sesión con 258 turnos
 > triviales corriendo en `claude-opus-4-8` cuando `claude-sonnet-5` bastaba —
