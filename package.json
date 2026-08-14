@@ -7,18 +7,10 @@
   "bin": {
     "motor-agentico": "bin/motor-agentico.mjs"
   },
-  "exports": {
-    "./core": {
-      "types": "./dist/core/index.d.ts",
-      "import": "./dist/core/index.js"
-    },
-    "./package.json": "./package.json"
-  },
   "files": [
     "bin",
     "dist",
     "web/dist",
-    "data/pricing.json",
     "README.md",
     "SECURITY.md"
   ],
@@ -36,18 +28,18 @@
     "web": "vite --config web/vite.config.ts",
     "build:web": "vite --config web/vite.config.ts build",
     "build:server": "tsc -p tsconfig.build.json",
-    "build:types": "tsc -p tsconfig.types.json",
-    "build": "pnpm build:web && pnpm build:server && pnpm build:types",
+    "build:core": "pnpm --filter motor-agentico-core build",
+    "build": "pnpm build:core && pnpm build:web && pnpm build:server",
     "prepublishOnly": "pnpm build",
-    "test": "vitest run",
+    "test": "pnpm --filter motor-agentico-core test && vitest run",
     "test:watch": "vitest",
-    "lint": "biome lint src test web/src",
+    "lint": "biome lint src test packages/core/src packages/core/test web/src",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/static": "^10.1.3",
-    "better-sqlite3": "^12.11.1",
-    "fastify": "^5.12.0"
+    "fastify": "^5.12.0",
+    "motor-agentico-core": "workspace:*"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",

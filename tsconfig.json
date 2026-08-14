@@ -11,7 +11,11 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "motor-agentico-core": ["packages/core/src/index.ts"]
+    }
   },
   "include": ["src", "test"]
 }
