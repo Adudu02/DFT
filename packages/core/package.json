@@ -1,0 +1,32 @@
+{
+  "name": "motor-agentico-core",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Motor de costos/actividad/fugas de agentes de IA (Claude Code, Codex, Qwen). Solo lectura sobre las fuentes; librería sin servidor ni UI.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "data/pricing.json"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "pnpm build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0"
+  }
+}

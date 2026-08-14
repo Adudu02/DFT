@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { buildServer } from "../src/server.js";
-import { DEFAULT_CONFIG } from "../src/lib/config.js";
+import { DEFAULT_CONFIG } from "motor-agentico-core";
 
 describe("HTTP contracts", () => {
   let tmp: string;

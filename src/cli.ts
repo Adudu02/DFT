@@ -6,17 +6,17 @@
  *   pnpm cli -- <root>  # sobreescribe la raiz de projects de Claude Code
  *   pnpm cli -- --waste # imprime dónde se fugan tokens (todos los agentes)
  */
-import { ClaudeCodeAdapter } from "./adapters/claude-code.js";
-import { CodexAdapter } from "./adapters/codex.js";
-import { rootsFromConfig } from "./adapters/registry.js";
-import { loadPricing } from "./lib/pricing.js";
-import { aggregate, type Row } from "./lib/aggregate.js";
-import { openDb, defaultDbPath } from "./lib/db.js";
-import { ingestAll } from "./ingest.js";
-import { loadConfig } from "./lib/config.js";
-import { getWaste, type WasteFinding } from "./lib/waste.js";
-import { ensureUserData } from "./lib/paths.js";
-import type { NormalizedSession } from "./adapters/types.js";
+import { ClaudeCodeAdapter } from "motor-agentico-core";
+import { CodexAdapter } from "motor-agentico-core";
+import { rootsFromConfig } from "motor-agentico-core";
+import { loadPricing } from "motor-agentico-core";
+import { aggregate, type Row } from "motor-agentico-core";
+import { openDb, defaultDbPath } from "motor-agentico-core";
+import { ingestAll } from "motor-agentico-core";
+import { loadConfig } from "motor-agentico-core";
+import { getWaste, type WasteFinding } from "motor-agentico-core";
+import { ensureUserData } from "motor-agentico-core";
+import type { NormalizedSession } from "motor-agentico-core";
 
 interface Adapter {
   discoverSessions(): Promise<string[]>;

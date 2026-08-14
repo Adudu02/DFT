@@ -1,7 +1,16 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.7/schema.json",
   "files": {
-    "includes": ["src/**/*.ts", "test/**/*.ts", "web/src/**/*.ts", "web/src/**/*.tsx"]
+    "includes": [
+      "src/**/*.ts",
+      "test/**/*.ts",
+      "packages/core/src/**/*.ts",
+      "packages/core/test/**/*.ts",
+      "packages/reporter/src/**/*.ts",
+      "packages/reporter/test/**/*.ts",
+      "web/src/**/*.ts",
+      "web/src/**/*.tsx"
+    ]
   },
   "linter": {
     "enabled": true,

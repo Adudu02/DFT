@@ -8,6 +8,8 @@ data/motor.db-wal
 data/motor.db-shm
 data/reports/
 data/unknown-models.json
+data/pricing.json
+data/config.json
 *.log
 
 # editor y material de diseño local (no versionar)

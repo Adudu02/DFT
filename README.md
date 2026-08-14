@@ -19,7 +19,7 @@ Dashboard local de costos/actividad de agentes. Lee transcripts de Claude Code
 ## Principio
 
 `~/.claude`, `~/.codex` y otras fuentes = **SOLO LECTURA** (se abren con flag
-`'r'`, ver `src/lib/fs-readonly.ts`). Todo estado propio (DB, reportes) vive en
+`'r'`, ver `packages/core/src/lib/fs-readonly.ts`). Todo estado propio (DB, reportes) vive en
 `./data/`.
 
 ## Arquitectura
@@ -96,7 +96,7 @@ Ver la página **Ayuda** en la UI.
 
 - **No usa claves API.** Calcula costo *equivalente API* desde conteos de tokens
   locales; nunca pide, recibe ni almacena credenciales.
-- **Fuentes intactas.** Todo con flag `'r'`; [`test/integrity.test.ts`](test/integrity.test.ts)
+- **Fuentes intactas.** Todo con flag `'r'`; [`packages/core/test/integrity.test.ts`](packages/core/test/integrity.test.ts)
   hashea el árbol de fuentes antes/después de ingerir y exige que no cambie —
   ve el test que lo garantiza, no solo esta afirmación.
 - **Lista blanca de lectura.** Solo `rollout-*.jsonl`, `*.jsonl` y memoria `*.md`.
@@ -107,9 +107,10 @@ Ver la página **Ayuda** en la UI.
   momento de la consulta y no los persiste en ningún lado.
 - **Sin red.** El servidor bindea solo a `127.0.0.1:8081`, sin auth. No exponerlo
   a la LAN ni detrás de un proxy público.
-- **3 dependencias de producción** (`fastify`, `@fastify/static`, `better-sqlite3`)
-  y runtime sin vulnerabilidades en `pnpm audit`. Modelo de amenazas, postura de
-  dependencias y reporte de fallos en [`SECURITY.md`](SECURITY.md).
+- **Árbol de dependencias mínimo:** la app usa `fastify` + `@fastify/static` +
+  `motor-agentico-core`; el motor solo `better-sqlite3`. Runtime sin
+  vulnerabilidades en `pnpm audit`. Modelo de amenazas, postura de dependencias
+  y reporte de fallos en [`SECURITY.md`](SECURITY.md).
 
 ## Comandos
 
@@ -166,7 +167,7 @@ requirió una refactorización adicional. `data/config.json` incluye el bloque c
   Actividad = timeline paginado y filtrable por sesión/día con drill-down (desglose
   por modelo), búsqueda puntual de prompts desde el transcript y exportación de métricas.
 
-- **F6** — auto-mejora + integridad. Test de humo (`test/integrity.test.ts`):
+- **F6** — auto-mejora + integridad. Test de humo (`packages/core/test/integrity.test.ts`):
   hashea el árbol de fuentes (path·size·mtime) antes/después de un ciclo de
   ingesta y exige hash idéntico (criterio §7: fuentes intactas). Cada ingesta
   real (rebuild/serve) escribe `./data/reports/run-<ts>.json` con líneas no
@@ -177,7 +178,7 @@ requirió una refactorización adicional. `data/config.json` incluye el bloque c
 
 - **F-waste** — página Ahorro. A diferencia del resto del dashboard (que MIDE el
   gasto), señala DÓNDE se fugan tokens y qué hacer (objetivo: gastar menos).
-  `getWaste` (`src/lib/waste.ts`) lee la DB y produce hallazgos rankeados:
+  `getWaste` (`packages/core/src/lib/waste.ts`) lee la DB y produce hallazgos rankeados:
   *cache-miss* (UC1 — sesión con baja tasa de acierto de caché; el contexto se
   reenvía como `input` a 1× en vez de leerse a 0.10×; ahorro estimado = ese input
   a la diferencia de tarifa), *session-bloat* (UC3 — sesión enorme por turnos o
@@ -189,11 +190,11 @@ requirió una refactorización adicional. `data/config.json` incluye el bloque c
   en su día, así se ve si el desperdicio baja con el tiempo). Gráfico en la página
   Ahorro.
 
-- **F5** — adapter Codex + registro de adapters. `src/adapters/codex.ts` lee los
+- **F5** — adapter Codex + registro de adapters. `packages/core/src/adapters/codex.ts` lee los
   rollouts JSONL de `~/.codex/sessions/**` y `~/.codex/archived_sessions/` (SOLO
   LECTURA): un `UsageEvent` por evento `token_count` (`last_token_usage`; input =
   `input_tokens − cached_input_tokens`, cacheRead = cached), modelo del
-  `turn_context`, sesión/proyecto del `session_meta` (cwd). `src/adapters/registry.ts`
+  `turn_context`, sesión/proyecto del `session_meta` (cwd). `packages/core/src/adapters/registry.ts`
   itera todos los adapters en la ingesta; `sessions.agent` distingue el origen.
   Tarifas OpenAI (`gpt-5.5`, `gpt-5.6-sol/terra/luna`) ya en `pricing.json`
   (verificadas 2026-07); cached-input = 10% del input, que el motor ya modela.

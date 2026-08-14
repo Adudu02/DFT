@@ -12,7 +12,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { latestReport, hasFindings, type IngestReport } from "./lib/report.js";
+import { latestReport, hasFindings, type IngestReport } from "motor-agentico-core";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
