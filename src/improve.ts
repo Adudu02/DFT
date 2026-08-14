@@ -1,8 +1,10 @@
 /**
- * Loop de auto-mejora (PLAN §5). Lee el último reporte en ./data/reports y lanza
- * Claude Code SOBRE ESTE REPO (nunca sobre ~/.claude) para corregir los
- * parsers/heurísticas que fallaron y añadir tests. Las fuentes jamás se tocan:
- * lo único que mejora es el código del dashboard.
+ * Auto-corrección dirigida por reportes (PLAN §5). Lee el último reporte en
+ * ./data/reports y lanza Claude Code SOBRE ESTE REPO (nunca sobre ~/.claude) con
+ * un prompt derivado de los hallazgos, para intentar corregir los
+ * parsers/heurísticas que fallaron y añadir tests. Es una pasada dirigida por un
+ * humano (no un loop autónomo que itere hasta verde). Las fuentes jamás se tocan:
+ * lo único que se mejora es el código del dashboard.
  *
  *   pnpm improve          # lanza Claude Code con el prompt
  *   pnpm improve -- --dry # solo imprime el prompt (no lanza nada)
