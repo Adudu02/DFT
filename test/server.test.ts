@@ -155,3 +155,40 @@ describe("HTTP contracts", () => {
     expect(typeof body.files).toBe("number");
   });
 });
+
+describe("SPA fallback", () => {
+  let tmp: string;
+  let server: Awaited<ReturnType<typeof buildServer>>;
+
+  beforeEach(async () => {
+    tmp = mkdtempSync(join(tmpdir(), "motor-spa-"));
+    mkdirSync(join(tmp, "dist"), { recursive: true });
+    writeFileSync(join(tmp, "dist", "index.html"), "<!doctype html><title>spa-fake</title>");
+    writeFileSync(join(tmp, "config.json"), JSON.stringify(DEFAULT_CONFIG));
+    writeFileSync(join(tmp, "pricing.json"), JSON.stringify({ models: { test: { input: 1, output: 2 } } }));
+    server = await buildServer({
+      dbPath: join(tmp, "motor.db"),
+      configPath: join(tmp, "config.json"),
+      pricingPath: join(tmp, "pricing.json"),
+      distRoot: join(tmp, "dist"),
+    });
+  });
+
+  afterEach(async () => {
+    await server.app.close();
+    rmSync(tmp, { recursive: true, force: true });
+  });
+
+  it("sirve index.html para rutas de página (deep links)", async () => {
+    const page = await server.app.inject({ method: "GET", url: "/configuracion" });
+    expect(page.statusCode).toBe(200);
+    expect(page.headers["content-type"]).toContain("text/html");
+    expect(page.body).toContain("spa-fake");
+  });
+
+  it("las rutas /api/* desconocidas siguen respondiendo 404 JSON", async () => {
+    const missing = await server.app.inject({ method: "GET", url: "/api/inexistente" });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json()).toEqual({ error: "not found" });
+  });
+});
