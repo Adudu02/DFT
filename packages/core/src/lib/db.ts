@@ -61,22 +61,63 @@ CREATE TABLE IF NOT EXISTS ingest_offsets (
   line_count  INTEGER NOT NULL,
   updated_at  TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS schema_info (
+  id      INTEGER PRIMARY KEY CHECK (id = 1),
+  version INTEGER NOT NULL
+);
 `;
 
-/** Abre (o crea) la DB en `path` y asegura el schema. */
+/**
+ * Versión del schema que produce este código. Al cambiar el schema:
+ * incrementar esta constante y añadir la migración en MIGRATIONS (la entrada
+ * `v` lleva una DB de versión v a v+1).
+ */
+export const SCHEMA_VERSION = 2;
+
+const MIGRATIONS: Record<number, string[]> = {
+  // v1 → v2: columna source_path en sessions (DBs anteriores a su introducción).
+  1: ["ALTER TABLE sessions ADD COLUMN source_path TEXT"],
+};
+
+function storedVersion(db: DB): number {
+  const row = db.prepare("SELECT version FROM schema_info WHERE id = 1").get() as
+    | { version: number }
+    | undefined;
+  return row?.version ?? 0; // 0 = DB pre-versioning (sin fila)
+}
+
+/** Abre (o crea) la DB en `path` y asegura el schema + versión. */
 export function openDb(path: string): DB {
   mkdirSync(dirname(path), { recursive: true });
   const db = new Database(path);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec(SCHEMA);
-  // Migración para DBs creadas antes de source_path (CREATE TABLE IF NOT EXISTS
-  // no agrega columnas). La DB es caché reconstruible, pero esto evita exigir
-  // un rebuild manual.
-  try {
-    db.exec("ALTER TABLE sessions ADD COLUMN source_path TEXT");
-  } catch {
-    // ya existe
+
+  let current = storedVersion(db);
+  if (current === 0) {
+    // DB pre-versioning: deducir por la forma del schema (source_path = v2).
+    const cols = db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[];
+    current = cols.some((c) => c.name === "source_path") ? SCHEMA_VERSION : 1;
   }
+  if (current > SCHEMA_VERSION) {
+    db.close();
+    throw new Error(
+      "La DB (" + path + ") fue creada por una versión más nueva del programa (schema v" + current + " > v" + SCHEMA_VERSION + "). " +
+      "Regenerá el caché: `pnpm cli -- --rebuild`, o borrá el archivo y volvé a abrir.",
+    );
+  }
+  for (let v = current; v < SCHEMA_VERSION; v++) {
+    for (const stmt of MIGRATIONS[v] ?? []) {
+      try {
+        db.exec(stmt);
+      } catch {
+        // estado intermedio (columna ya presente): tolerado, igual que antes
+      }
+    }
+  }
+  db.prepare(
+    "INSERT INTO schema_info (id, version) VALUES (1, ?) ON CONFLICT(id) DO UPDATE SET version = excluded.version",
+  ).run(SCHEMA_VERSION);
   return db;
 }
 
