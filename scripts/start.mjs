@@ -1,20 +1,53 @@
 #!/usr/bin/env node
 /**
- * Arranque en un paso (cross-platform): instala dependencias y compila la UI si
- * faltan, luego levanta el dashboard (ingesta + API + UI en 127.0.0.1:8081).
- * Equivale a start.sh pero sin depender de bash. Usado por `pnpm start`.
+ * Arranque en un paso (cross-platform, única implementación del arranque).
+ * Instala dependencias y compila la UI si faltan, evita levantar un segundo
+ * dashboard si ya hay uno vivo, abre el navegador cuando el servidor responde
+ * y limpia el proceso al salir. `start.sh` y `pnpm start` delegan aquí.
  */
 import { existsSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const URL = "http://127.0.0.1:8081";
+const HEALTH = `${URL}/api/health`;
 const shell = process.platform === "win32"; // pnpm es .cmd en Windows
+
+async function healthy() {
+  try {
+    const r = await fetch(HEALTH, { signal: AbortSignal.timeout(1000) });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+function openBrowser() {
+  const [cmd, ...args] =
+    process.platform === "darwin"
+      ? ["open", URL]
+      : process.platform === "win32"
+        ? ["cmd", "/c", "start", URL]
+        : ["xdg-open", URL];
+  try {
+    spawn(cmd, args, { stdio: "ignore", detached: true }).unref();
+  } catch {
+    // sin navegador/gráficos: el dashboard sigue accesible por URL
+  }
+}
 
 function run(cmd, args) {
   const r = spawnSync(cmd, args, { cwd: root, stdio: "inherit", shell });
   if (r.status !== 0) process.exit(r.status ?? 1);
+}
+
+// Ya está corriendo (p. ej. doble clic dos veces): solo abrir el navegador.
+if (await healthy()) {
+  console.log("• El dashboard ya está corriendo en " + URL);
+  openBrowser();
+  process.exit(0);
 }
 
 if (!existsSync(join(root, "node_modules"))) {
@@ -25,5 +58,21 @@ if (!existsSync(join(root, "web", "dist", "index.html"))) {
   console.log("• Compilando la UI (una sola vez)…");
   run("pnpm", ["run", "build:web"]);
 }
-console.log("• Dashboard en http://127.0.0.1:8081");
-run("pnpm", ["run", "serve"]);
+
+console.log("• Arrancando dashboard en " + URL);
+const server = spawn("pnpm", ["run", "serve"], { cwd: root, stdio: "inherit", shell });
+
+for (let i = 0; i < 60; i++) {
+  if (await healthy()) break;
+  await new Promise((r) => setTimeout(r, 500));
+}
+openBrowser();
+
+// Limpieza equivalente al trap del start.sh anterior.
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, () => {
+    server.kill("SIGTERM");
+    process.exit(0);
+  });
+}
+server.on("exit", (code) => process.exit(code ?? 0));
