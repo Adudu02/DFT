@@ -11,7 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20, 22]
+        # pnpm 11 exige Node >= 22.13 y Node 20 llegó a EOL (2026-04): se testean
+        # las dos líneas LTS mantenidas (22 = LTS, 24 = Active LTS).
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v4
 
