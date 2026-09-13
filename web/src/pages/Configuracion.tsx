@@ -10,11 +10,17 @@ export function Configuracion() {
   const { data: cfg } = useApi<Config>("/api/config", key);
   const { data: pricing } = useApi<unknown>("/api/pricing", key);
   const [form, setForm] = useState<Config | null>(null);
+  const [downgradeText, setDowngradeText] = useState<string>("");
+  const [jsonError, setJsonError] = useState<string | null>(null);
   const [pricingText, setPricingText] = useState<string>("");
   const [msg, setMsg] = useState<string>("");
   const [failed, setFailed] = useState(false);
   useEffect(() => {
-    if (cfg) setForm(cfg);
+    if (cfg) {
+      setForm(cfg);
+      setDowngradeText(JSON.stringify(cfg.waste.downgradePaths, null, 2));
+      setJsonError(null);
+    }
   }, [cfg]);
   useEffect(() => {
     if (pricing) setPricingText(JSON.stringify(pricing, null, 2));
@@ -50,6 +56,18 @@ export function Configuracion() {
   };
   const num = (k: keyof Config) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [k]: Number(e.target.value) });
+  // Edición libre: el texto local manda; solo un parseo exitoso entra a `form`.
+  const editDowngrade = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    setDowngradeText(text);
+    try {
+      const paths = JSON.parse(text);
+      setJsonError(null);
+      setForm({ ...form, waste: { ...form.waste, downgradePaths: paths } });
+    } catch (err) {
+      setJsonError(String(err));
+    }
+  };
   const numW = (k: keyof WasteThresholds) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, waste: { ...form.waste, [k]: Number(e.target.value) } });
 
@@ -98,18 +116,14 @@ export function Configuracion() {
         </Field>
         <div className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Downgrade paths (modelo caro → destino)</div>
         <textarea
-          value={JSON.stringify(form.waste.downgradePaths, null, 2)}
-          onChange={(e) => {
-            try {
-              const paths = JSON.parse(e.target.value);
-              setForm({ ...form, waste: { ...form.waste, downgradePaths: paths } });
-            } catch {
-              // JSON inválido, no actualizar
-            }
-          }}
+          value={downgradeText}
+          onChange={editDowngrade}
           spellCheck={false}
-          className="w-full h-48 bg-term-bg border border-term-border rounded p-2 text-xs font-mono text-term-amber"
+          className={`w-full h-48 bg-term-bg border rounded p-2 text-xs font-mono text-term-amber ${
+            jsonError ? "border-term-red" : "border-term-border"
+          }`}
         />
+        {jsonError && <div className="text-xs text-term-red mt-1">JSON inválido: {jsonError}</div>}
         <div className="text-xs text-term-muted">Cada entrada mapea un modelo caro a su destino de downgrade para turnos triviales.</div>
         <div className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Rutas de agentes</div>
         <Field label="Claude Code (vacío = ~/.claude/projects)">
@@ -140,7 +154,7 @@ export function Configuracion() {
           />
         </Field>
         <div className="text-xs text-term-muted">Tras cambiar rutas, corré Rebuild para reingestar.</div>
-        <button onClick={saveConfig} className="btn mt-2">
+        <button onClick={saveConfig} disabled={jsonError !== null} className="btn mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
           Guardar configuración
         </button>
       </Panel>
