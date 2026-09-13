@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { RefreshControl } from "./components/RefreshControl.js";
+import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { Inicio } from "./pages/Inicio.js";
 import { Ahorro } from "./pages/Ahorro.js";
 import { Skills } from "./pages/Skills.js";
@@ -41,7 +42,9 @@ export default function App() {
         <RefreshControl />
       </header>
       <main className="p-4 sm:p-8 max-w-[1360px] mx-auto overflow-x-hidden">
-        <Active />
+        <ErrorBoundary key={tab}>
+          <Active />
+        </ErrorBoundary>
       </main>
     </div>
   );
