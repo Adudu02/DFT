@@ -29,7 +29,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
         <div role="alert" className="bg-term-panel border border-term-border rounded p-6 max-w-xl mx-auto mt-8">
           <div className="text-term-red text-sm font-bold uppercase tracking-widest">La página falló</div>
           <p className="text-term-text text-sm mt-2 break-words">{this.state.error.message}</p>
-          <button onClick={this.retry} className="btn mt-4">
+          <button type="button" onClick={this.retry} className="btn mt-4">
             Reintentar
           </button>
         </div>

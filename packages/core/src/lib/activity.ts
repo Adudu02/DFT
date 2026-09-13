@@ -211,7 +211,7 @@ export interface SessionTurn {
 /** HH:MM en `timeZone` (vacío = zona del sistema). Zona inválida => cae a UTC. */
 function hhmm(ts: string, timeZone?: string): string {
   const d = new Date(ts);
-  if (isNaN(d.getTime())) return ts.slice(11, 16);
+  if (Number.isNaN(d.getTime())) return ts.slice(11, 16);
   try {
     return d.toLocaleTimeString("es-MX", {
       hour: "2-digit",
@@ -247,7 +247,7 @@ function cleanPrompt(raw: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return t.length > MAX_PROMPT_CHARS ? t.slice(0, MAX_PROMPT_CHARS) + "…" : t;
+  return t.length > MAX_PROMPT_CHARS ? `${t.slice(0, MAX_PROMPT_CHARS)}…` : t;
 }
 
 /** Prompts del usuario en un transcript (Claude Code o Codex), en orden. */

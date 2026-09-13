@@ -52,7 +52,7 @@ export interface Summary {
 }
 
 function addDays(day: string, delta: number): string {
-  const d = new Date(day + "T00:00:00.000Z");
+  const d = new Date(`${day}T00:00:00.000Z`);
   return new Date(d.getTime() + delta * DAY_MS).toISOString().slice(0, 10);
 }
 
@@ -136,7 +136,8 @@ export function getSummary(
   const perAgentModels: Record<string, ModelShare[]> = {};
   for (const { agent, ...m } of perAgentModelRows) {
     const total = agentCostTotals.get(agent) ?? 0;
-    (perAgentModels[agent] ??= []).push({
+    perAgentModels[agent] ??= [];
+    perAgentModels[agent].push({
       ...m,
       known: !!pricing.models[m.model],
       share: total > 0 ? m.costUsd / total : 0,

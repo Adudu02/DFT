@@ -10,7 +10,7 @@ import { Empty } from "../components/Empty.js";
 function PromptRow({ t }: { t: SessionTurn }) {
   const [open, setOpen] = useState(false);
   return (
-    <button
+    <button type="button"
       onClick={() => setOpen((o) => !o)}
       aria-expanded={open}
       className="w-full text-left flex gap-2 items-baseline min-w-0 rounded px-1 -mx-1 hover:bg-term-bg focus:outline-none focus:ring-1 focus:ring-term-amber"
@@ -122,7 +122,7 @@ export function Actividad() {
           {(["project", "agent", "model"] as const).map((field) => (
             <input key={field} className="in" placeholder={field} value={draft[field]} onChange={(e) => setDraft({ ...draft, [field]: e.target.value })} />
           ))}
-          <button className="btn w-full sm:w-auto" onClick={applyFilters}>Aplicar filtros</button>
+          <button type="button" className="btn w-full sm:w-auto" onClick={applyFilters}>Aplicar filtros</button>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <a className="btn" href="/api/export?format=csv" download>Descargar CSV</a>
@@ -133,12 +133,12 @@ export function Actividad() {
       <Panel title="Buscar en prompts">
         <div className="flex flex-col gap-2 sm:flex-row">
           <input className="in" value={promptQuery} onChange={(e) => setPromptQuery(e.target.value)} placeholder="Texto del prompt (solo lectura)" />
-          <button className="btn w-full sm:w-auto" onClick={search}>Buscar</button>
+          <button type="button" className="btn w-full sm:w-auto" onClick={search}>Buscar</button>
         </div>
         {searchError && <div className="mt-2 text-xs text-term-red">{searchError}</div>}
         {matches.length > 0 && <div className="mt-3 grid gap-2 text-xs">{matches.map((match) => (
           <div key={`${match.id}-${match.prompt}`} className="border-b border-term-border/50 pb-2">
-            <button className="text-left text-term-amber" onClick={() => setOpen(open === match.id ? null : match.id)}>{match.project}/{match.id.slice(0, 8)}</button>
+            <button type="button" className="text-left text-term-amber" onClick={() => setOpen(open === match.id ? null : match.id)}>{match.project}/{match.id.slice(0, 8)}</button>
             <div className="text-term-muted break-words">{match.prompt}</div>
             {open === match.id && <SessionDrill id={match.id} />}
           </div>
@@ -151,7 +151,7 @@ export function Actividad() {
           <div className="grid gap-2">
             {d.sessions.map((s) => (
               <div key={s.id} className="min-w-0 border-b border-term-border/50 pb-2 last:border-0">
-                <button className="w-full min-w-0 text-left flex flex-col items-start gap-1 sm:flex-row sm:justify-between sm:items-center sm:gap-3" onClick={() => setOpen(open === s.id ? null : s.id)}>
+                <button type="button" className="w-full min-w-0 text-left flex flex-col items-start gap-1 sm:flex-row sm:justify-between sm:items-center sm:gap-3" onClick={() => setOpen(open === s.id ? null : s.id)}>
                   <span className="w-full flex-1 min-w-0 truncate sm:w-auto" title={`${s.project}/${s.id}`}>
                     <span className="text-term-muted text-xs">{s.project}/</span>
                     <span className="text-term-amber">{s.id.slice(0, 8)}</span>
@@ -168,7 +168,7 @@ export function Actividad() {
           </div>
         </Panel>
       ))}
-      {data.nextCursor && <button className="btn justify-self-start" onClick={() => setCursor(data.nextCursor)}>Cargar más</button>}
+      {data.nextCursor && <button type="button" className="btn justify-self-start" onClick={() => setCursor(data.nextCursor)}>Cargar más</button>}
     </div>
   );
 }

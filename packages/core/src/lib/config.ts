@@ -109,6 +109,6 @@ export async function saveConfig(partial: Partial<Config>, path = defaultConfigP
     minutesPerUse: { ...current.minutesPerUse, ...(valid.minutesPerUse ?? {}) },
     agentPaths: { ...current.agentPaths, ...(valid.agentPaths ?? {}) },
   });
-  await writeFile(path, JSON.stringify(next, null, 2) + "\n", "utf8");
+  await writeFile(path, `${JSON.stringify(next, null, 2)}\n`, "utf8");
   return next;
 }

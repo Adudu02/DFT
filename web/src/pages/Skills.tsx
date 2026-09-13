@@ -35,7 +35,7 @@ export function Skills() {
 
       <div className="flex gap-2 flex-wrap">
         {cats.map((c) => (
-          <button
+          <button type="button"
             key={c}
             onClick={() => setFilter(c)}
             className={`px-3 py-1 text-xs rounded border ${

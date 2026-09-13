@@ -28,7 +28,7 @@ export default function App() {
         <span className="brand text-2xl sm:text-3xl text-term-text whitespace-nowrap mr-auto">How much you messed up?</span>
         <nav className="order-3 w-full overflow-x-auto flex gap-5 text-sm sm:order-none sm:w-auto">
           {TABS.map(([name], i) => (
-            <button
+            <button type="button"
               key={name}
               onClick={() => setTab(i)}
               className={`num font-bold whitespace-nowrap transition-colors ${

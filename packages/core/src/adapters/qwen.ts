@@ -16,6 +16,7 @@
  *   cacheRead = cachedTokens
  *   cacheWrite = 0  (Qwen no expone cache creation)
  */
+import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { readDirRO } from "../lib/fs-readonly.js";
@@ -125,7 +126,7 @@ export function parseQwenUsageLines(
 export async function discoverQwenUsageFiles(root: string = defaultQwenRoot()): Promise<string[]> {
   const usageDir = join(root, "usage");
   const out: string[] = [];
-  let entries;
+  let entries: Dirent[];
   try {
     entries = await readDirRO(usageDir);
   } catch {
@@ -223,7 +224,7 @@ export function parseQwenPrompts(raw: string): { ts: string; prompt: string }[] 
 export async function discoverQwenChats(root: string = defaultQwenRoot()): Promise<string[]> {
   const projectsDir = join(root, "projects");
   const out: string[] = [];
-  let projects;
+  let projects: Dirent[];
   try {
     projects = await readDirRO(projectsDir);
   } catch {
@@ -232,7 +233,7 @@ export async function discoverQwenChats(root: string = defaultQwenRoot()): Promi
   for (const p of projects) {
     if (!p.isDirectory()) continue;
     const chatsDir = join(projectsDir, p.name, "chats");
-    let chatEntries;
+    let chatEntries: Dirent[];
     try {
       chatEntries = await readDirRO(chatsDir);
     } catch {

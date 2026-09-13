@@ -28,10 +28,10 @@ export async function refreshAll(): Promise<void> {
   bumpTick();
 }
 
-export function useApi<T>(path: string, reloadKey = 0) {
+export function useApi<T>(path: string, _reloadKey = 0) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const globalTick = useSyncExternalStore(subscribeTick, getTick, getTick);
+  const _globalTick = useSyncExternalStore(subscribeTick, getTick, getTick);
   useEffect(() => {
     let alive = true;
     setError(null);
@@ -42,6 +42,6 @@ export function useApi<T>(path: string, reloadKey = 0) {
     return () => {
       alive = false;
     };
-  }, [path, reloadKey, globalTick]);
+  }, [path]);
   return { data, error };
 }

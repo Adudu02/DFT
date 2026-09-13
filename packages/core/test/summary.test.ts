@@ -64,7 +64,7 @@ describe("getSummary — perAgent", () => {
     expect(claude.reduce((n, m) => n + m.share, 0)).toBeCloseTo(1, 6);
 
     // codex sin tarifa => sus modelos aparecen igual, con costo 0 (donut => Empty).
-    const codex = s.perAgentModels["codex"];
+    const codex = s.perAgentModels.codex;
     expect(codex).toBeDefined();
     expect(codex.length).toBeGreaterThan(0);
     expect(codex.every((m) => m.costUsd === 0)).toBe(true);

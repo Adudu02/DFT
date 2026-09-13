@@ -35,7 +35,7 @@ export async function writeReport(
     adaptersWithoutData: summary.files === 0 ? ["claude-code"] : [],
   };
   const path = join(dir, `run-${report.ts.replace(/[:.]/g, "-")}.json`);
-  await writeFile(path, JSON.stringify(report, null, 2) + "\n", "utf8");
+  await writeFile(path, `${JSON.stringify(report, null, 2)}\n`, "utf8");
   return { path, report };
 }
 

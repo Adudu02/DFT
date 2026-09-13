@@ -86,7 +86,7 @@ export async function buildServer(options: ServerOptions = {}) {
     }
     const data = getExportData(db);
     const extension = format === "csv" ? "csv" : "json";
-    reply.header("Content-Disposition", `attachment; filename=\"motor-agentico-${new Date().toISOString().slice(0, 10)}.${extension}\"`);
+    reply.header("Content-Disposition", `attachment; filename="motor-agentico-${new Date().toISOString().slice(0, 10)}.${extension}"`);
     if (format === "csv") return reply.type("text/csv; charset=utf-8").send(exportCsv(data));
     return reply.type("application/json; charset=utf-8").send(data);
   });

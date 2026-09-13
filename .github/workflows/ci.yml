@@ -9,6 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # pnpm 11 exige Node >= 22.13 y Node 20 llegó a EOL (2026-04): se testean
+        # las dos líneas LTS mantenidas (22 = LTS, 24 = Active LTS).
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v4
 
@@ -16,10 +21,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: ${{ matrix.node-version }}
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Audit dependencies
+        run: pnpm audit --audit-level=moderate
 
       - name: Typecheck
         run: pnpm run typecheck

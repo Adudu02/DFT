@@ -52,7 +52,7 @@ export function Memoria() {
           <Empty msg="sin archivos de memoria en ~/.claude/projects/*/memory" />
         ) : (
           <div className="overflow-x-auto">
-            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 480 }}>
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 480 }} role="img" aria-label="Grafo de memoria del proyecto">
               {data.links.map((l, i) => {
                 const a = pos.get(l.source);
                 const b = pos.get(l.target);

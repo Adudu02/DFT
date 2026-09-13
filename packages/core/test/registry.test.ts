@@ -37,7 +37,7 @@ describe("getIngestAdapters — parseSkills por adapter", () => {
 
     const raw =
       '{"type":"user","timestamp":"2026-08-05T19:00:00Z","message":{"parts":[{"text":"/review este código"}]}}\n';
-    const skills = qwen!.parseSkills(raw, 0);
+    const skills = qwen?.parseSkills(raw, 0);
     expect(skills).toHaveLength(1);
     expect(skills[0].skill).toBe("review");
   });

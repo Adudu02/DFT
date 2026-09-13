@@ -7,6 +7,7 @@
  * las líneas corruptas se saltan sin lanzar, modelo desconocido se conserva
  * (la tarifa se decide después, en el motor de costos).
  */
+import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { readFileRO, readDirRO } from "../lib/fs-readonly.js";
@@ -29,9 +30,9 @@ function splitLines(raw: string): string[] {
 }
 
 function toParsedLine(o: any, fallbackKey: string): ParsedLine | null {
-  if (!o || o.type !== "assistant") return null;
+  if (o?.type !== "assistant") return null;
   const m = o.message;
-  if (!m || !m.usage) return null;
+  if (!m?.usage) return null;
   const model: string | undefined = m.model;
   if (!model || model === "<synthetic>") return null;
 
@@ -140,7 +141,7 @@ export class ClaudeCodeAdapter {
 
   /** Rutas de todos los transcripts .jsonl bajo projects/<proj>/. */
   async discoverSessions(): Promise<string[]> {
-    let projects;
+    let projects: Dirent[];
     try {
       projects = await readDirRO(this.root);
     } catch {
@@ -150,7 +151,7 @@ export class ClaudeCodeAdapter {
     for (const p of projects) {
       if (!p.isDirectory()) continue;
       const dir = join(this.root, p.name);
-      let files;
+      let files: Dirent[];
       try {
         files = await readDirRO(dir);
       } catch {

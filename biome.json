@@ -15,8 +15,15 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": false,
-      "correctness": { "noUnusedVariables": "error" }
+      "recommended": true,
+      "correctness": {
+        "noUnusedVariables": "error",
+        "useExhaustiveDependencies": "warn"
+      },
+      "suspicious": {
+        "noExplicitAny": "warn",
+        "noArrayIndexKey": "warn"
+      }
     }
   }
 }

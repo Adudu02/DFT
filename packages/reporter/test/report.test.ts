@@ -63,7 +63,7 @@ describe("toText", () => {
     const many: ReportResult = {
       totalEstUsd: 210,
       count: 25,
-      findings: Array.from({ length: 25 }, (_, i) => finding(10)),
+      findings: Array.from({ length: 25 }, (_, _i) => finding(10)),
     };
     const t = toText(many, null);
     expect(t).toContain("… y 5 más");

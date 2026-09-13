@@ -35,7 +35,8 @@
     "test": "pnpm --filter motor-agentico-core test && pnpm --filter motor-agentico-report test && vitest run",
     "test:watch": "vitest",
     "lint": "biome lint src test packages/core/src packages/core/test packages/reporter/src packages/reporter/test web/src",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fastify/static": "^10.1.3",
@@ -50,6 +51,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
     "@vitejs/plugin-react": "^6.1.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "^10.0.5",
     "postcss": "^8.5.26",
     "react": "^19.2.8",

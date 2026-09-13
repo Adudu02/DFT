@@ -38,13 +38,13 @@ export function Inicio() {
             {mode === "subs" ? `Gasto equiv. API · ${s.windowDays}d` : `Tokens · ${s.windowDays}d`}
           </span>
           <div className="flex text-xs border border-term-border rounded overflow-hidden">
-            <button
+            <button type="button"
               onClick={() => setMode("subs")}
               className={`px-2 py-0.5 ${mode === "subs" ? "bg-term-amber text-black" : "text-term-muted"}`}
             >
               SUSCRIPCIÓN
             </button>
-            <button
+            <button type="button"
               onClick={() => setMode("tokens")}
               className={`px-2 py-0.5 ${mode === "tokens" ? "bg-term-amber text-black" : "text-term-muted"}`}
             >
@@ -83,7 +83,7 @@ export function Inicio() {
           <div className="text-xs text-term-muted">turnos totales</div>
           <div className="mt-2 flex gap-4 text-xs">
             <span className={s.activity.deltaPct7d != null && s.activity.deltaPct7d < 0 ? "text-term-red" : "text-term-green"}>
-              {s.activity.deltaPct7d == null ? "—" : (s.activity.deltaPct7d >= 0 ? "▲" : "▼") + " " + Math.abs(s.activity.deltaPct7d).toFixed(0) + "% 7d"}
+              {s.activity.deltaPct7d == null ? "—" : `${s.activity.deltaPct7d >= 0 ? "▲" : "▼"} ${Math.abs(s.activity.deltaPct7d).toFixed(0)}% 7d`}
             </span>
             <span className="text-term-muted">{s.activity.projects} proyectos</span>
           </div>
@@ -117,7 +117,7 @@ export function Inicio() {
         {agents.length > 0 && (
           <div className="flex flex-wrap text-xs border border-term-border rounded overflow-hidden mb-2 w-fit">
             {["todos", ...agents].map((a) => (
-              <button
+              <button type="button"
                 key={a}
                 onClick={() => setAgentSel(a)}
                 className={`px-2 py-0.5 ${agentSel === a ? "bg-term-amber text-black" : "text-term-muted"}`}

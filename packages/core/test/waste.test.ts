@@ -34,9 +34,9 @@ describe("getWaste — cache-miss (UC1)", () => {
     const cache = findings.find((f) => f.kind === "cache-miss");
     expect(cache).toBeDefined();
     // input=3M (opus 1M + haiku 1M + ghost 1M), cacheRead=1M => ratio 0.25 < 0.7
-    expect(cache!.metrics.cacheHitRatio).toBeCloseTo(0.25, 6);
+    expect(cache?.metrics.cacheHitRatio).toBeCloseTo(0.25, 6);
     // ahorro = 0.9 * (opus 1M*5 + haiku 1M*1 + ghost sin tarifa 0)/1e6 = 0.9*6 = 5.4
-    expect(cache!.estUsd).toBeCloseTo(5.4, 6);
+    expect(cache?.estUsd).toBeCloseTo(5.4, 6);
     expect(totalEstUsd).toBeCloseTo(5.4, 6);
   });
 
@@ -54,7 +54,7 @@ describe("getWaste — tendencia (UC5)", () => {
     // la sesión deterministic termina el 2026-07-02 (día del opus2)
     const day = trend.find((p) => p.day === "2026-07-02");
     expect(day).toBeDefined();
-    expect(day!.estUsd).toBeCloseTo(5.4, 6);
+    expect(day?.estUsd).toBeCloseTo(5.4, 6);
     // el total de la tendencia coincide con el total del reporte
     expect(trend.reduce((n, p) => n + p.estUsd, 0)).toBeCloseTo(totalEstUsd, 6);
   });
@@ -72,9 +72,9 @@ describe("getWaste — model-mismatch (UC2)", () => {
     const { findings } = getWaste(db, pricing, DEFAULT_WASTE);
     const mm = findings.find((f) => f.kind === "model-mismatch" && f.sessionId === "mm");
     expect(mm).toBeDefined();
-    expect(mm!.metrics.turns).toBe(3);
+    expect(mm?.metrics.turns).toBe(3);
     // opus 3×(1000*5+500*25)/1e6 = 0.0525 ; sonnet-5 3×(1000*2+500*10)/1e6 = 0.021
-    expect(mm!.estUsd).toBeCloseTo(0.0315, 6);
+    expect(mm?.estUsd).toBeCloseTo(0.0315, 6);
   });
 
   it("no señala si el modelo no es caro (sube el umbral de tarifa)", async () => {
@@ -90,8 +90,8 @@ describe("getWaste — session-bloat (UC3)", () => {
     const { findings } = getWaste(db, pricing, { ...DEFAULT_WASTE, bloatTurns: 3 });
     const bloat = findings.find((f) => f.kind === "session-bloat");
     expect(bloat).toBeDefined();
-    expect(bloat!.estUsd).toBeUndefined(); // informativo
-    expect(bloat!.estTokens).toBeGreaterThan(0);
+    expect(bloat?.estUsd).toBeUndefined(); // informativo
+    expect(bloat?.estTokens).toBeGreaterThan(0);
   });
 
   it("con umbrales altos por defecto no hay bloat", async () => {
