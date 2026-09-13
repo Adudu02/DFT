@@ -30,6 +30,8 @@ export interface ServerOptions {
   configPath?: string;
   pricingPath?: string;
   catalogRoots?: { claudeRoot?: string; codexRoot?: string };
+  /** Raíz del build del frontend; inyectable para tests herméticos del fallback SPA. */
+  distRoot?: string;
 }
 
 export async function buildServer(options: ServerOptions = {}) {
@@ -154,9 +156,18 @@ export async function buildServer(options: ServerOptions = {}) {
   );
 
   const here = dirname(fileURLToPath(import.meta.url));
-  const dist = join(here, "..", "web", "dist");
+  const dist = options.distRoot ?? join(here, "..", "web", "dist");
   if (existsSync(dist)) {
-    app.register(fastifyStatic, { root: dist });
+    await app.register(fastifyStatic, { root: dist });
+    // Fallback SPA: cualquier ruta de página sirve la app (deep links + recarga).
+    // Las /api/* desconocidas conservan su 404 JSON.
+    app.setNotFoundHandler((req, reply) => {
+      if (req.url.startsWith("/api")) {
+        reply.code(404).send({ error: "not found" });
+      } else {
+        void reply.sendFile("index.html");
+      }
+    });
   }
 
   app.addHook("onClose", async () => db.close());
