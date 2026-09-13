@@ -21,6 +21,9 @@ importers:
       motor-agentico-core:
         specifier: workspace:*
         version: link:packages/core
+      motor-agentico-insights:
+        specifier: workspace:*
+        version: link:packages/insights
     devDependencies:
       '@biomejs/biome':
         specifier: ^2.5.10
@@ -93,11 +96,20 @@ importers:
         specifier: ^4.1.11
         version: 4.1.11(vitest@4.1.11)
 
+  packages/insights:
+    dependencies:
+      motor-agentico-core:
+        specifier: workspace:*
+        version: link:../core
+
   packages/reporter:
     dependencies:
       motor-agentico-core:
         specifier: workspace:*
         version: link:../core
+      motor-agentico-insights:
+        specifier: workspace:*
+        version: link:../insights
 
 packages:
 

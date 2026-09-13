@@ -13,8 +13,7 @@ import { loadPricing } from "motor-agentico-core";
 import { aggregate, type Row } from "motor-agentico-core";
 import { openDb, defaultDbPath } from "motor-agentico-core";
 import { ingestAll } from "motor-agentico-core";
-import { loadConfig } from "motor-agentico-core";
-import { getWaste, type WasteFinding } from "motor-agentico-core";
+import { getWaste, loadConfig, type WasteFinding } from "motor-agentico-insights";
 import { ensureUserData } from "motor-agentico-core";
 import type { NormalizedSession } from "motor-agentico-core";
 

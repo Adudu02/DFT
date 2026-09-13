@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildServer } from "../src/server.js";
-import { DEFAULT_CONFIG } from "motor-agentico-core";
+import { DEFAULT_CONFIG } from "motor-agentico-insights";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (name: string) => join(here, "..", "packages", "core", "test", "fixtures", name);

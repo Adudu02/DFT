@@ -6,16 +6,12 @@
  *  - Costo por evento se calcula en ingesta con el motor de Fase 1.
  * Fuentes = SOLO LECTURA (readFileRO + stat). Escritura solo en ./data.
  */
-import { stat, unlink } from "node:fs/promises";
-import { defaultProjectsRoot } from "./adapters/claude-code.js";
-import { getIngestAdapters, rootsFromConfig, type IngestAdapter } from "./adapters/registry.js";
+import { stat } from "node:fs/promises";
+import { getIngestAdapters, type IngestAdapter } from "./adapters/registry.js";
 import type { DB } from "./lib/db.js";
-import { openDb, defaultDbPath } from "./lib/db.js";
 import { readFileRO } from "./lib/fs-readonly.js";
 import { costForEvent } from "./lib/cost.js";
-import { loadConfig } from "./lib/config.js";
 import { loadPricing, getRate, UnknownModels, type Pricing } from "./lib/pricing.js";
-import { scanMemory } from "./lib/memory.js";
 import { dayInTz } from "./lib/time.js";
 
 export interface IngestSummary {
@@ -23,7 +19,8 @@ export interface IngestSummary {
   filesChanged: number;
   eventsInserted: number;
   skillsInserted?: number;
-  memories: number;
+  /** Producido por insights (syncMemoryNodes); core solo mide. */
+  memories?: number;
   unknownModels: string[];
   unparseableLines: number;
 }
@@ -176,80 +173,14 @@ export async function ingestAll(
     }
   }
 
-  // Memoria vive bajo la raíz de Claude Code (~/.claude/projects).
-  const memRoot = opts.projectsRoot ?? defaultProjectsRoot();
-  const memories = await refreshMemoryNodes(db, memRoot, opts.staleDays);
-
   return {
     files,
     filesChanged,
     eventsInserted,
     skillsInserted,
-    memories,
     unknownModels: unknown.list(),
     unparseableLines,
   };
 }
 
-/** Reconstruye memory_nodes (snapshot) desde los archivos de memoria (RO). */
-async function refreshMemoryNodes(db: DB, projectsRoot: string, staleDays?: number): Promise<number> {
-  const graph = await scanMemory(projectsRoot, { staleDays });
-  const memNodes = graph.nodes.filter((n) => n.kind === "memory" || n.kind === "index");
-  const origin = new Map<string, string>();
-  for (const l of graph.links) {
-    if (l.rel === "origin") origin.set(l.source, l.target.replace(/^session:/, ""));
-  }
-  db.prepare("BEGIN").run();
-  try {
-    const previous = db.prepare("SELECT path FROM memory_nodes").all() as { path: string }[];
-    const seen = new Set<string>();
-    const upsert = db.prepare(`
-      INSERT INTO memory_nodes
-        (path, name, project, type, size, last_touched, origin_session, stale_bool)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(path) DO UPDATE SET
-        name = excluded.name, project = excluded.project, type = excluded.type,
-        size = excluded.size, last_touched = excluded.last_touched,
-        origin_session = excluded.origin_session, stale_bool = excluded.stale_bool
-      WHERE name IS NOT excluded.name OR project IS NOT excluded.project OR type IS NOT excluded.type
-         OR size IS NOT excluded.size OR last_touched IS NOT excluded.last_touched
-         OR origin_session IS NOT excluded.origin_session OR stale_bool IS NOT excluded.stale_bool
-    `);
-    for (const n of memNodes) {
-      seen.add(n.id);
-      upsert.run(n.id, n.label, n.project, n.type ?? n.kind, n.size ?? 0, n.lastTouched ?? null, origin.get(n.id) ?? null, n.stale ? 1 : 0);
-    }
-    const del = db.prepare("DELETE FROM memory_nodes WHERE path = ?");
-    for (const row of previous) if (!seen.has(row.path)) del.run(row.path);
-    db.prepare("COMMIT").run();
-  } catch (err) {
-    db.prepare("ROLLBACK").run();
-    throw err;
-  }
-  return graph.counts.memories;
-}
 
-/** Borra la DB (cache reconstruible) y reingesta todo desde cero. */
-export async function rebuild(
-  opts: { dbPath?: string; projectsRoot?: string } = {},
-): Promise<IngestSummary> {
-  const dbPath = opts.dbPath ?? defaultDbPath();
-  for (const f of [dbPath, `${dbPath}-wal`, `${dbPath}-shm`]) {
-    await unlink(f).catch(() => {}); // puede no existir
-  }
-  const db = openDb(dbPath);
-  try {
-    // Honra config.agentPaths salvo que el llamador fuerce una raíz (tests).
-    const config = await loadConfig();
-    const roots = rootsFromConfig(config.agentPaths);
-    return await ingestAll(db, {
-      staleDays: config.staleDays,
-      timeZone: config.timeZone,
-      projectsRoot: opts.projectsRoot ?? roots.projectsRoot,
-      codexRoot: roots.codexRoot,
-      qwenRoot: roots.qwenRoot,
-    });
-  } finally {
-    db.close();
-  }
-}

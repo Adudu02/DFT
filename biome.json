@@ -9,7 +9,9 @@
       "packages/reporter/src/**/*.ts",
       "packages/reporter/test/**/*.ts",
       "web/src/**/*.ts",
-      "web/src/**/*.tsx"
+      "web/src/**/*.tsx",
+      "packages/insights/src/**/*.ts",
+      "packages/insights/test/**/*.ts"
     ]
   },
   "linter": {

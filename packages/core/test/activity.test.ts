@@ -120,11 +120,14 @@ describe("getSessionTurns — parsing real de prompts", () => {
   });
 
   it("busca prompts sin persistirlos", async () => {
-    const before = (db2.prepare("SELECT COUNT(*) AS n FROM memory_nodes").get() as { n: number }).n;
+    const tables = (db2.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((t) => t.name);
+    expect(tables.some((t) => /prompt/i.test(t))).toBe(false);
     const results = await searchPrompts(db2, "parser");
     expect(results[0]?.id).toBe("prompts");
     expect(results[0]?.prompt).toContain("parser");
-    expect((db2.prepare("SELECT COUNT(*) AS n FROM memory_nodes").get() as { n: number }).n).toBe(before);
+    // sigue sin haber tabla de prompts tras la búsqueda
+    const tablesAfter = (db2.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((t) => t.name);
+    expect(tablesAfter).toEqual(tables);
   });
 
   it("múltiples coincidencias en una sesión aportan múltiples resultados", async () => {

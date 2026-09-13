@@ -26,17 +26,26 @@ export * from "./ingest.js";
 // Persistencia (métricas, nunca prompts).
 export * from "./lib/db.js";
 
-// Tarifas y config del usuario.
+// Tarifas del usuario.
 export * from "./lib/pricing.js";
-export * from "./lib/config.js";
+
+// IO de solo lectura: política de seguridad del motor, reutilizable por los
+// consumidores y por la capa de dominio (motor-agentico-insights).
+export * from "./lib/fs-readonly.js";
 
 // Motor de costos y vistas derivadas.
 export * from "./lib/cost.js";
 export * from "./lib/aggregate.js";
 export * from "./lib/summary.js";
 export * from "./lib/activity.js";
-export * from "./lib/waste.js";
-export * from "./lib/skills.js";
-export * from "./lib/memory.js";
 export * from "./lib/export.js";
 export * from "./lib/report.js";
+
+/**
+ * TIER 2 — dominio del dashboard (NO vive en este paquete):
+ *   config (tarifa/hora, agentPaths), waste (hallazgos de fuga), skills
+ *   (catálogo) y memory (grafo de Claude Code) viven en
+ *   `motor-agentico-insights`, junto con el orquestador `rebuild` que combina
+ *   ingesta + memoria. Este paquete es la medición genérica; si solo querés
+ *   medir tokens, no necesitás insights.
+ */

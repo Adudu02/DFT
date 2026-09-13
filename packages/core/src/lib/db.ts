@@ -44,16 +44,6 @@ CREATE TABLE IF NOT EXISTS skills_usage (
   UNIQUE(skill, session_id, ts, kind)
 );
 CREATE INDEX IF NOT EXISTS idx_skills_skill ON skills_usage(skill);
-CREATE TABLE IF NOT EXISTS memory_nodes (
-  path           TEXT PRIMARY KEY,
-  name           TEXT,
-  project        TEXT,
-  type           TEXT,
-  size           INTEGER,
-  last_touched   TEXT,
-  origin_session TEXT,
-  stale_bool     INTEGER
-);
 CREATE TABLE IF NOT EXISTS ingest_offsets (
   path        TEXT PRIMARY KEY,
   size        INTEGER NOT NULL,

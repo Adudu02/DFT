@@ -6,8 +6,8 @@
 import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
-import { readFileRO, readDirRO } from "./fs-readonly.js";
-import type { DB } from "./db.js";
+import { readFileRO, readDirRO } from "motor-agentico-core";
+import type { DB } from "motor-agentico-core";
 import type { Config } from "./config.js";
 
 export interface CatalogEntry {

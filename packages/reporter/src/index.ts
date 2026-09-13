@@ -13,13 +13,11 @@
 import {
   defaultDbPath,
   ensureUserData,
-  getWaste,
-  loadConfig,
   loadPricing,
   openDb,
-  rebuild,
   setDataDir,
 } from "motor-agentico-core";
+import { getWaste, loadConfig, rebuild } from "motor-agentico-insights";
 import { exceedsThreshold, parseArgs, type ReportResult, toJson, toText } from "./report.js";
 
 async function main(): Promise<void> {

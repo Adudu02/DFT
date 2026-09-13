@@ -69,7 +69,6 @@ describe("integridad read-only de las fuentes", () => {
 
     // Sanity: la ingesta realmente corrió sobre las fuentes.
     expect(summary.eventsInserted).toBeGreaterThan(0);
-    expect(summary.memories).toBe(2);
 
     expect(hashTree(sources)).toBe(before);
   });

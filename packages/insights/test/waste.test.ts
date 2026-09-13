@@ -3,10 +3,10 @@ import { mkdtempSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openDb, type DB } from "../src/lib/db.js";
-import { ingestAll } from "../src/ingest.js";
-import { loadPricing } from "../src/lib/pricing.js";
-import { getWaste, DEFAULT_WASTE } from "../src/lib/waste.js";
+import { openDb, type DB } from "motor-agentico-core";
+import { ingestAll } from "motor-agentico-core";
+import { loadPricing } from "motor-agentico-core";
+import { getWaste, DEFAULT_WASTE } from "../src/waste.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (name: string) => join(here, "fixtures", name);

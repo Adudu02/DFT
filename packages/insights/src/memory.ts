@@ -7,8 +7,8 @@
 import type { Dirent } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { readFileRO, readDirRO } from "./fs-readonly.js";
-import { defaultProjectsRoot } from "../adapters/claude-code.js";
+import { readFileRO, readDirRO } from "motor-agentico-core";
+import { defaultProjectsRoot } from "motor-agentico-core";
 
 const DAY_MS = 86_400_000;
 

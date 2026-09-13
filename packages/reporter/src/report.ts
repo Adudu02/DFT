@@ -3,7 +3,7 @@
  * (motor-agentico-core) produce los hallazgos; aquí solo se presentan y se
  * decide si el CI debe fallar.
  */
-import type { WasteFinding } from "motor-agentico-core";
+import type { WasteFinding } from "motor-agentico-insights";
 
 export interface ReportResult {
   totalEstUsd: number;

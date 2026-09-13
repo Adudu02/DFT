@@ -20,6 +20,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "motor-agentico-core": "workspace:*"
+    "motor-agentico-core": "workspace:*",
+    "motor-agentico-insights": "workspace:*"
   }
 }

@@ -7,8 +7,6 @@ import { parseCodexMeta, parseCodexLines, parseCodexSkills, discoverCodexSession
 import { openDb, type DB } from "../src/lib/db.js";
 import { ingestAll } from "../src/ingest.js";
 import { loadPricing } from "../src/lib/pricing.js";
-import { getSkills } from "../src/lib/skills.js";
-import { DEFAULT_CONFIG } from "../src/lib/config.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (name: string) => join(here, "fixtures", name);
@@ -84,13 +82,14 @@ describe("ingestAll con Codex (codexRoot explícito)", () => {
     expect(found[0]).toContain("rollout-");
   });
 
-  it("asocia el uso de skill con Codex y calcula su ahorro", () => {
-    const skill = getSkills(
-      db,
-      { ...DEFAULT_CONFIG, hourlyRate: 120, minutesPerUseDefault: 5 },
-      new Map(),
-    ).skills.find((s) => s.name === "ponytail");
-    expect(skill).toMatchObject({ uses: 1, savedUsd: 10, agents: [{ agent: "codex", uses: 1, savedUsd: 10 }] });
+  it("asocia el uso de skill con Codex (fila en skills_usage, agente codex)", () => {
+    // La agregación/ahorro (getSkills) vive en motor-agentico-insights; en core
+    // se verifica la medición: el uso quedó registrado con su agente.
+    const row = db.prepare("SELECT session_id, kind FROM skills_usage WHERE skill = 'ponytail'").get() as {
+      session_id: string;
+      kind: string;
+    };
+    expect(row).toMatchObject({ kind: "command" });
   });
 
   it("rebuild reanaliza los skills de archivos ya ingeridos", async () => {

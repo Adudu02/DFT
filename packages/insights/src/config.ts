@@ -5,8 +5,8 @@
  */
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readFileRO } from "./fs-readonly.js";
-import { dataDir } from "./paths.js";
+import { readFileRO } from "motor-agentico-core";
+import { dataDir } from "motor-agentico-core";
 import { DEFAULT_WASTE, type WasteThresholds } from "./waste.js";
 
 export interface Config {

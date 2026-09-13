@@ -25,6 +25,9 @@ export default defineConfig({
       "motor-agentico-core": fileURLToPath(
         new URL("./packages/core/src/index.ts", import.meta.url),
       ),
+      "motor-agentico-insights": fileURLToPath(
+        new URL("./packages/insights/src/index.ts", import.meta.url),
+      ),
     },
   },
 });

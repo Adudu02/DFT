@@ -2,10 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { scanMemory } from "../src/lib/memory.js";
-import { openDb } from "../src/lib/db.js";
-import { ingestAll } from "../src/ingest.js";
-import { loadPricing } from "../src/lib/pricing.js";
+import { scanMemory } from "../src/memory.js";
+import { openDb } from "motor-agentico-core";
+import { ingestAll } from "motor-agentico-core";
+import { loadPricing } from "motor-agentico-core";
+import { syncMemoryNodes } from "../src/memory_sync.js";
 
 let tmp: string;
 let root: string;
@@ -66,12 +67,17 @@ describe("scanMemory", () => {
   it("sin cambios conserva nodos y solo elimina el archivo que dejó de existir", async () => {
     const db = openDb(join(tmp, "motor.db"));
     const options = { projectsRoot: root, pricing: await loadPricing() };
+    // Contrato post-split: la ingesta mide; la sincronización de memoria es
+    // explícita (syncMemoryNodes) y conserva nodos sin cambios.
     await ingestAll(db, options);
+    await syncMemoryNodes(db, root);
     const first = db.prepare("SELECT path, name FROM memory_nodes ORDER BY path").all();
     await ingestAll(db, options);
+    await syncMemoryNodes(db, root);
     expect(db.prepare("SELECT path, name FROM memory_nodes ORDER BY path").all()).toEqual(first);
     unlinkSync(join(root, "projX", "memory", "b.md"));
     await ingestAll(db, options);
+    await syncMemoryNodes(db, root);
     expect((db.prepare("SELECT COUNT(*) AS n FROM memory_nodes").get() as { n: number }).n).toBe(2); // a.md + MEMORY.md
     db.close();
   });

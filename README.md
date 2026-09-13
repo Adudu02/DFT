@@ -193,6 +193,33 @@ pnpm typecheck      # tsc --noEmit
   `UsageEvent` per `token_count` event. OpenAI rates in `pricing.json`. A new
   model without a rate still shows cost 0 + badge — never silently estimated.
 
+## Embedding the engine
+
+The engine ships as two workspace packages with a one-way dependency
+(`insights → core`), so you can reuse token measurement without inheriting this
+dashboard's opinions:
+
+- **`motor-agentico-core` — Tier 1: generic measurement.** Adapters (Claude
+  Code, Codex, Qwen), incremental ingest, metrics-only SQLite, API-equivalent
+  costing and aggregate views. If you want to measure token usage from any
+  dashboard, harness or backend, this is all you need:
+
+  ```ts
+  import { setDataDir, rebuild, openDb, defaultDbPath, getSummary } from "motor-agentico-core";
+
+  setDataDir("/path/for/state"); // DB + reports live here (default: <cwd>/data)
+  await rebuild();
+  const summary = getSummary(openDb(defaultDbPath()));
+  ```
+
+- **`motor-agentico-insights` — Tier 2: this dashboard's domain.** Waste
+  findings (leak detection with configurable thresholds), the skills catalog,
+  the Claude Code memory graph, the user `config.json`, and the `rebuild`
+  orchestrator that combines ingest + memory sync. Add it only if you want
+  those opinions too.
+
+Both import everything from their package barrel — never from internal routes.
+
 ## API
 
 `GET /api/summary` · `GET /api/skills` · `GET /api/memory` · `GET /api/activity` ·

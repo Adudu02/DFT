@@ -1,0 +1,25 @@
+{
+  "name": "motor-agentico-insights",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Capa de dominio del dashboard sobre motor-agentico-core: fugas (waste), skills, memoria y config. Depende del motor; sin servidor ni UI.",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "motor-agentico-core": "workspace:*"
+  }
+}

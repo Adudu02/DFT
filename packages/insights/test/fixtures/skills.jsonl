@@ -1,0 +1,4 @@
+{"type":"user","timestamp":"2026-07-03T09:00:00.000Z","sessionId":"sk","message":{"role":"user","content":"<command-name>/caveman</command-name>"}}
+{"type":"user","timestamp":"2026-07-03T09:05:00.000Z","sessionId":"sk","message":{"role":"user","content":"<command-name>/caveman</command-name>\n<command-args>full</command-args>"}}
+{"type":"user","timestamp":"2026-07-03T09:10:00.000Z","sessionId":"sk","message":{"role":"user","content":"<command-name>/model</command-name>"}}
+{"type":"assistant","timestamp":"2026-07-03T09:15:00.000Z","sessionId":"sk","requestId":"r_fd","message":{"id":"m_fd","model":"claude-opus-4-8","role":"assistant","content":[{"type":"tool_use","name":"Skill","input":{"skill":"frontend-design"}}]}}

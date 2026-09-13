@@ -14,10 +14,10 @@
  *    modelo más barato habría bastado. Ahorro = costo real − costo a la tarifa
  *    del modelo destino sobre los mismos tokens.
  */
-import type { DB } from "./db.js";
-import { costForEvent } from "./cost.js";
-import { getRate, type Pricing } from "./pricing.js";
-import type { UsageEvent } from "../adapters/types.js";
+import type { DB } from "motor-agentico-core";
+import { costForEvent } from "motor-agentico-core";
+import { getRate, type Pricing } from "motor-agentico-core";
+import type { UsageEvent } from "motor-agentico-core";
 
 export interface WasteThresholds {
   minCacheRatio: number; // por debajo => posible cache-miss

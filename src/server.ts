@@ -10,15 +10,15 @@ import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
 import { openDb, defaultDbPath } from "motor-agentico-core";
 import { ensureUserData } from "motor-agentico-core";
-import { ingestAll } from "motor-agentico-core";
+import { defaultProjectsRoot, ingestAll } from "motor-agentico-core";
 import { rootsFromConfig } from "motor-agentico-core";
 import { loadPricing, savePricing, type Pricing } from "motor-agentico-core";
 import { getSummary } from "motor-agentico-core";
-import { loadConfig, saveConfig, type Config } from "motor-agentico-core";
-import { discoverCatalog, getSkills } from "motor-agentico-core";
-import { scanMemory } from "motor-agentico-core";
+import { loadConfig, saveConfig, type Config } from "motor-agentico-insights";
+import { discoverCatalog, getSkills } from "motor-agentico-insights";
+import { scanMemory, syncMemoryNodes } from "motor-agentico-insights";
 import { getActivityPage, getSessionDetail, getSessionTurns, searchPrompts } from "motor-agentico-core";
-import { getWaste } from "motor-agentico-core";
+import { getWaste } from "motor-agentico-insights";
 import { writeReport } from "motor-agentico-core";
 import { exportCsv, getExportData } from "motor-agentico-core";
 
@@ -119,13 +119,15 @@ export async function buildServer(options: ServerOptions = {}) {
   // salta archivos sin cambios por (size, mtime).
   app.post("/api/refresh", async () => {
     const t0 = Date.now();
+    const roots = rootsFromConfig(config.agentPaths);
     const s = await ingestAll(db, {
       pricing,
       staleDays: config.staleDays,
       timeZone: config.timeZone,
-      ...rootsFromConfig(config.agentPaths),
+      ...roots,
     });
-    return { ...s, durationMs: Date.now() - t0, at: new Date().toISOString() };
+    const memories = await syncMemoryNodes(db, roots.projectsRoot ?? defaultProjectsRoot(), config.staleDays);
+    return { ...s, memories, durationMs: Date.now() - t0, at: new Date().toISOString() };
   });
 
   app.get("/api/config", async () => config);
@@ -151,9 +153,12 @@ export async function buildServer(options: ServerOptions = {}) {
     }
   });
 
-  app.post("/api/rebuild", async () =>
-    ingestAll(db, { pricing, staleDays: config.staleDays, reparseSkills: true, ...rootsFromConfig(config.agentPaths) }),
-  );
+  app.post("/api/rebuild", async () => {
+    const roots = rootsFromConfig(config.agentPaths);
+    const summary = await ingestAll(db, { pricing, staleDays: config.staleDays, reparseSkills: true, ...roots });
+    const memories = await syncMemoryNodes(db, roots.projectsRoot ?? defaultProjectsRoot(), config.staleDays);
+    return { ...summary, memories };
+  });
 
   const here = dirname(fileURLToPath(import.meta.url));
   const dist = options.distRoot ?? join(here, "..", "web", "dist");
@@ -178,15 +183,18 @@ export async function main() {
   ensureUserData();
   const { app, db, pricing, config } = await buildServer();
 
-  // Ingesta incremental al arrancar (fuentes read-only).
+  // Ingesta incremental al arrancar (fuentes read-only) + insights de memoria.
   const t0 = Date.now();
+  const roots = rootsFromConfig(config.agentPaths);
   const summary = await ingestAll(db, {
     pricing,
     staleDays: config.staleDays,
-    ...rootsFromConfig(config.agentPaths),
+    timeZone: config.timeZone,
+    ...roots,
   });
-  await writeReport(summary, { durationMs: Date.now() - t0 });
-  app.log.info({ event: "ingest_complete", files: summary.files, filesChanged: summary.filesChanged, eventsInserted: summary.eventsInserted, memories: summary.memories, unknownModels: summary.unknownModels.length }, "Ingesta completa");
+  const memories = await syncMemoryNodes(db, roots.projectsRoot ?? defaultProjectsRoot(), config.staleDays);
+  await writeReport({ ...summary, memories } as typeof summary, { durationMs: Date.now() - t0 });
+  app.log.info({ event: "ingest_complete", files: summary.files, filesChanged: summary.filesChanged, eventsInserted: summary.eventsInserted, memories, unknownModels: summary.unknownModels.length }, "Ingesta completa");
 
   try {
     await app.listen({ host: HOST, port: PORT });
