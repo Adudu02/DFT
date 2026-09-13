@@ -16,6 +16,21 @@ export function exceedsThreshold(totalEstUsd: number, threshold: number | null):
   return threshold !== null && totalEstUsd > threshold;
 }
 
+/** Parsea los flags de la CLI. Pura y exportada para poder testearla sin ejecutar main(). */
+export function parseArgs(argv: string[]) {
+  const val = (name: string) => {
+    const i = argv.indexOf(name);
+    return i >= 0 ? argv[i + 1] : undefined;
+  };
+  const threshold = val("--threshold");
+  return {
+    data: val("--data"),
+    json: argv.includes("--json"),
+    ingest: argv.includes("--ingest"),
+    threshold: threshold !== undefined ? Number(threshold) : null,
+  };
+}
+
 /** Salida machine-readable para consumir en CI. */
 export function toJson(r: ReportResult, threshold: number | null) {
   return {

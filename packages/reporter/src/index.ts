@@ -20,21 +20,7 @@ import {
   rebuild,
   setDataDir,
 } from "motor-agentico-core";
-import { exceedsThreshold, type ReportResult, toJson, toText } from "./report.js";
-
-function parseArgs(argv: string[]) {
-  const val = (name: string) => {
-    const i = argv.indexOf(name);
-    return i >= 0 ? argv[i + 1] : undefined;
-  };
-  const threshold = val("--threshold");
-  return {
-    data: val("--data"),
-    json: argv.includes("--json"),
-    ingest: argv.includes("--ingest"),
-    threshold: threshold !== undefined ? Number(threshold) : null,
-  };
-}
+import { exceedsThreshold, parseArgs, type ReportResult, toJson, toText } from "./report.js";
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
