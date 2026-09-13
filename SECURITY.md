@@ -1,66 +1,57 @@
-# Política de seguridad
+# Security Policy
 
-Motor Agéntico lee transcripts de agentes (Claude Code, Codex, Qwen) que pueden
-contener información sensible. La seguridad no es un añadido: es el motivo por el
-que la herramienta es viable de correr contra datos reales. Este documento dice
-qué garantiza el diseño, cómo está el árbol de dependencias, y cómo reportar un
-problema.
+Motor Agéntico reads agent transcripts (Claude Code, Codex, Qwen) that may
+contain sensitive information. Security isn't an add-on: it's the reason the
+tool is viable to run against real data. This document states what the design
+guarantees, how the dependency tree is structured, and how to report an issue.
 
-## Garantías de diseño
+## Design guarantees
 
-- **Fuentes en solo lectura.** `~/.claude`, `~/.codex`, `~/.qwen` y demás fuentes
-  se abren siempre con flag `'r'` (ver `packages/core/src/lib/fs-readonly.ts`). El test
-  [`packages/core/test/integrity.test.ts`](packages/core/test/integrity.test.ts) hashea el árbol de fuentes
-  antes y después de ingerir y falla si algo cambió.
-- **Nunca toca credenciales.** Lista blanca de lectura: solo `rollout-*.jsonl`,
-  `*.jsonl` y memoria `*.md`. Nunca abre `~/.codex/auth.json`, `.env` ni archivos
-  de credenciales.
-- **Sin claves API.** El costo es *equivalente API* calculado desde conteos de
-  tokens locales; la herramienta nunca pide, recibe ni almacena credenciales de
-  ningún proveedor.
-- **La DB solo guarda métricas.** `./data/motor.db` guarda conteos de tokens,
-  modelo y nombres de skills — **nunca** el texto de tus prompts. El drill-down de
-  Actividad los lee del transcript original (solo lectura) en el momento de la
-  consulta y no los persiste.
-- **Solo local.** El servidor bindea **únicamente a `127.0.0.1:8081`** — sin auth,
-  sin exposición de red. Todo estado propio vive en `./data/`.
+- **Read-only sources.** `~/.claude`, `~/.codex`, `~/.qwen` and every other
+  source are always opened with the `'r'` flag (see
+  `packages/core/src/lib/fs-readonly.ts`). The
+  [`packages/core/test/integrity.test.ts`](packages/core/test/integrity.test.ts)
+  test hashes the source tree before and after ingesting and fails if anything
+  changed.
+- **Never touches credentials.** Read whitelist: only `rollout-*.jsonl`,
+  `*.jsonl` and memory `*.md`. It never opens `~/.codex/auth.json`, `.env` or
+  credential files.
+- **No API keys.** Cost is *API-equivalent*, computed from local token counts;
+  the tool never asks for, receives or stores credentials from any provider.
+- **The DB stores metrics only.** `./data/motor.db` stores token counts, model
+  and skill names — **never** your prompt text. The Activity drill-down reads
+  prompts from the original transcript (read-only) at query time and persists
+  them nowhere.
+- **Local only.** The server binds **exclusively to `127.0.0.1:8081`** — no
+  auth, no network exposure. All own state lives in `./data/`.
+- **Versioned storage.** The DB records its schema version
+  (`schema_info`); opening a database written by a newer program version fails
+  fast with an actionable message instead of misreading it.
 
-## Dependencias
+## Dependencies
 
-Superficie de ataque mínima por diseño: **cuatro dependencias de producción en
-total**, repartidas por capa. La app (`motor-agentico`) usa `fastify` +
-`@fastify/static` y depende del motor; el motor (`motor-agentico-core`) usa solo
-`better-sqlite3`. El resto son herramientas de build/test (`vite`, `vitest`,
-`tailwind`…) que **no forman parte del runtime que se ejecuta** (`pnpm serve`
-sirve el `dist` ya compilado vía Fastify).
+Minimal attack surface by design: **three external production dependencies in
+total**, split by layer. The app (`motor-agentico`) uses `fastify` +
+`@fastify/static` and depends on the engine; the engine (`motor-agentico-core`,
+a workspace package) uses only `better-sqlite3`. Everything else is build/test
+tooling (`vite`, `vitest`, `tailwind`…) that is **not part of the runtime**
+(`pnpm serve` serves the already-built `dist` through Fastify).
 
-Estado de `pnpm audit`:
+`pnpm audit` status:
 
-- **Runtime: 0 vulnerabilidades.** Todo lo que toca la ejecución real está
-  parcheado (`@fastify/static` ≥10.1.2, `fast-uri` ≥4.1.2 vía override en
-  `pnpm-workspace.yaml`).
-- **Dev/build: avisos residuales conocidos** en `vite`, `esbuild` y `vitest`.
-  Se documentan en vez de forzar el upgrade porque:
-  - Solo afectan al **dev server** (`pnpm dev` / `pnpm web`) y al runner de tests
-    (`vitest run`), no al binario que sirve el dashboard.
-  - El aviso *critical* de `vitest` requiere el **Vitest UI server** escuchando
-    (`--ui`); este proyecto nunca lo lanza.
-  - El aviso *high* de `vite` (`server.fs.deny` bypass) es **solo Windows** y
-    **solo dev server**.
-  - Explotar cualquiera exige a un atacante ya presente en la máquina del
-    desarrollador golpeando un puerto local de desarrollo.
-  - **Ruta de upgrade** (cierra los avisos, no urgente): migrar el toolchain a
-    `vite` 8 + `@vitejs/plugin-react` 6 + `vitest` 4 — tres majors acoplados, se
-    hará cuando toque mantenimiento del frontend, no como parche de seguridad.
+- **0 vulnerabilities, runtime and dev.** The frontend toolchain migration to
+  `vite` 8 + `@vitejs/plugin-react` 6 + `vitest` 4 (August 2026) closed the
+  previously documented dev-server advisories. CI enforces it with
+  `pnpm audit --audit-level=moderate` on every push and pull request.
 
-Verificable en cualquier checkout limpio:
+Verifiable on any clean checkout:
 
 ```bash
 pnpm install --frozen-lockfile && pnpm audit
 ```
 
-## Reportar una vulnerabilidad
+## Reporting a vulnerability
 
-Abre un issue en el repositorio describiendo el problema y cómo reproducirlo. Si
-el detalle es sensible, indícalo en el issue y coordinamos un canal privado antes
-de publicar detalles.
+Open an issue in the repository describing the problem and how to reproduce it.
+If the details are sensitive, say so in the issue and we'll coordinate a private
+channel before publishing details.
