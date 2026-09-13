@@ -25,6 +25,7 @@ import {
   parseQwenUsageLines,
   loadQwenSessionProjectMap,
   deriveQwenIdsFromUsage,
+  parseQwenSkills,
 } from "./qwen.js";
 
 export interface ParsedLine {
@@ -95,7 +96,7 @@ function qwenAdapter(root: string): IngestAdapter {
       // Para Qwen, los events tienen su propio sessionId del usage file
       return parseQwenUsageLines(raw, sessionMap, fromLine);
     },
-    parseSkills: () => [], // Qwen no expone skills en el formato que detectamos
+    parseSkills: (raw, fromLine) => parseQwenSkills(raw, fromLine),
     multiSession: true, // Los usage files contienen múltiples sesiones
   };
 }

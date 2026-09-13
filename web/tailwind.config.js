@@ -21,7 +21,7 @@ export default {
           amber: "#e56b83", // acento (gold-bright)
           amberdim: "#c2415a", // acento tenue (gold)
           green: "#7dd35f", // positivo/ahorro (se mantiene verde, legible sobre el fondo)
-          red: "#e56b83", // aviso => carmesí, coherente con Nocturne
+          red: "#ef4444", // aviso/error — distinguible del acento carmesí, legible sobre el fondo
           muted: "#948a78",
           text: "#ede8e0",
         },

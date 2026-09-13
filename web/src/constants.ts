@@ -4,7 +4,3 @@
 export const AMBER = ["#e56b83", "#c2415a", "#7a2836", "#7dd35f", "#948a78", "#e0c000", "#5f8fd3"];
 
 export const REFRESH_MS = 30_000;
-
-// Estilos de .in y .btn viven en index.css (tema Nocturne); esto queda vacío
-// para no duplicar. Se mantiene el export por compatibilidad con App.tsx.
-export const INLINE_STYLES = "";
