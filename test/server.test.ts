@@ -146,6 +146,16 @@ describe("HTTP contracts", () => {
     expect(skills.json()).toEqual({ skills: [], categories: {} });
   });
 
+  it("pricing-status expone frestura local sin red", async () => {
+    // El pricing de test no tiene verified_at => unknown.
+    const st = await server.app.inject({ method: "GET", url: "/api/pricing-status" });
+    expect(st.statusCode).toBe(200);
+    const body = st.json();
+    expect(body.status).toBe("unknown");
+    expect(body.maxAgeDays).toBe(7); // DEFAULT_CONFIG.pricing
+    expect(body.verifiedAt).toBeNull();
+  });
+
   it("rebuild reingesta y devuelve contadores", async () => {
     const rebuild = await server.app.inject({ method: "POST", url: "/api/rebuild" });
     expect(rebuild.statusCode).toBe(200);

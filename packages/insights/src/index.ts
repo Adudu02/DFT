@@ -14,3 +14,4 @@ export * from "./skills.js";
 export * from "./memory.js";
 export * from "./memory_sync.js";
 export * from "./rebuild.js";
+export * from "./pricing-auto.js";

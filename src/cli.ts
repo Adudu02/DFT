@@ -9,7 +9,7 @@
 import { ClaudeCodeAdapter } from "motor-agentico-core";
 import { CodexAdapter } from "motor-agentico-core";
 import { rootsFromConfig } from "motor-agentico-core";
-import { loadPricing } from "motor-agentico-core";
+import { loadPricing, pricingAgeStatus } from "motor-agentico-core";
 import { aggregate, type Row } from "motor-agentico-core";
 import { openDb, defaultDbPath } from "motor-agentico-core";
 import { ingestAll } from "motor-agentico-core";
@@ -100,10 +100,19 @@ function printWasteFinding(f: WasteFinding): void {
   console.log(`  ${f.detail}`);
 }
 
+/** Aviso de frescura de pricing (local, sin red; TTL de config.pricing). */
+function warnIfPricingStale(pricing: Awaited<ReturnType<typeof loadPricing>>, maxAgeDays: number): void {
+  const st = pricingAgeStatus(pricing, maxAgeDays);
+  if (st.status === "fresh") return;
+  const edad = st.ageDays !== null ? ` (${st.ageDays}d, TTL ${maxAgeDays}d)` : " (sin fecha de verificación)";
+  console.warn(`⚠ precios ${st.status}${edad} — actualizalos con: pnpm pricing:update`);
+}
+
 /** F-waste: abre la DB (cache), ingesta TODOS los agentes e imprime las fugas. */
 async function runWaste(roots: { projectsRoot?: string; codexRoot: string }): Promise<void> {
   const pricing = await loadPricing();
   const config = await loadConfig();
+  warnIfPricingStale(pricing, config.pricing.maxAgeDays);
   const db = openDb(defaultDbPath());
   try {
     await ingestAll(db, { ...roots, pricing, staleDays: config.staleDays });
@@ -137,6 +146,8 @@ async function main(): Promise<void> {
   if (wasteMode) return runWaste({ projectsRoot: claudeRoot, codexRoot: roots.codexRoot });
 
   const pricing = await loadPricing();
+  const configCli = await loadConfig();
+  warnIfPricingStale(pricing, configCli.pricing.maxAgeDays);
   const claude = await collectSessions(new ClaudeCodeAdapter(claudeRoot));
   const codex = await collectSessions(new CodexAdapter(roots.codexRoot));
   const sessions = [...claude.sessions, ...codex.sessions];
