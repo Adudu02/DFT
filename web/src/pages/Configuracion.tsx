@@ -9,6 +9,10 @@ export function Configuracion() {
   const [key, setKey] = useState(0);
   const { data: cfg } = useApi<Config>("/api/config", key);
   const { data: pricing } = useApi<unknown>("/api/pricing", key);
+  const { data: pricingStatus } = useApi<{ status: string; ageDays: number | null; maxAgeDays: number; verifiedAt: string | null }>(
+    "/api/pricing-status",
+    key,
+  );
   const [form, setForm] = useState<Config | null>(null);
   const [downgradeText, setDowngradeText] = useState<string>("");
   const [jsonError, setJsonError] = useState<string | null>(null);
@@ -160,6 +164,14 @@ export function Configuracion() {
       </Panel>
 
       <Panel title="pricing.json">
+        {pricingStatus && pricingStatus.status !== "fresh" && (
+          <div className="text-xs text-term-red border border-term-red rounded p-2 mb-3">
+            ⚠ Precios {pricingStatus.status === "stale"
+              ? `desactualizados (${pricingStatus.ageDays ?? "?"}d · TTL ${pricingStatus.maxAgeDays}d)`
+              : "sin fecha de verificación"}
+            {" "}— actualizalos con <code>pnpm pricing:update</code>
+          </div>
+        )}
         <textarea
           value={pricingText}
           onChange={(e) => setPricingText(e.target.value)}

@@ -12,11 +12,12 @@ import { openDb, defaultDbPath } from "motor-agentico-core";
 import { ensureUserData } from "motor-agentico-core";
 import { defaultProjectsRoot, ingestAll } from "motor-agentico-core";
 import { rootsFromConfig } from "motor-agentico-core";
-import { loadPricing, savePricing, type Pricing } from "motor-agentico-core";
+import { loadPricing, pricingAgeStatus, savePricing, type Pricing } from "motor-agentico-core";
 import { getSummary } from "motor-agentico-core";
 import { loadConfig, saveConfig, type Config } from "motor-agentico-insights";
 import { discoverCatalog, getSkills } from "motor-agentico-insights";
 import { scanMemory, syncMemoryNodes } from "motor-agentico-insights";
+import { autoPricingCheck } from "motor-agentico-insights";
 import { getActivityPage, getSessionDetail, getSessionTurns, searchPrompts } from "motor-agentico-core";
 import { getWaste } from "motor-agentico-insights";
 import { writeReport } from "motor-agentico-core";
@@ -143,6 +144,14 @@ export async function buildServer(options: ServerOptions = {}) {
   });
 
   app.get("/api/pricing", async () => pricing);
+
+  // Frescura del pricing (badge UI): se lee del disco para reflejar updates
+  // en background; cálculo local, sin red.
+  app.get("/api/pricing-status", async () => {
+    const current = await loadPricing(options.pricingPath);
+    const status = pricingAgeStatus(current, config.pricing.maxAgeDays);
+    return { ...status, maxAgeDays: config.pricing.maxAgeDays, verifiedAt: current.verified_at ?? null };
+  });
   app.put("/api/pricing", async (req, reply) => {
     try {
       pricing = await savePricing(req.body as Pricing, options.pricingPath);
@@ -176,6 +185,9 @@ export async function buildServer(options: ServerOptions = {}) {
   }
 
   app.addHook("onClose", async () => db.close());
+  // Auto-chequeo de pricing solo con paths por defecto (tests inyectan los
+  // suyos y quedan herméticos); una vez por proceso, no bloquea nada.
+  if (!options.pricingPath) void autoPricingCheck(config);
   return { app, db, pricing, config };
 }
 

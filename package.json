@@ -21,6 +21,7 @@
     "start": "node scripts/start.mjs",
     "launcher": "bash scripts/install-launcher.sh",
     "cli": "tsx src/cli.ts",
+    "pricing:update": "tsx src/pricing-update-cli.ts",
     "rebuild": "tsx src/rebuild.ts",
     "improve": "tsx src/improve.ts",
     "serve": "tsx src/server.ts",

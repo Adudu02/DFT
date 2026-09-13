@@ -26,8 +26,9 @@ export * from "./ingest.js";
 // Persistencia (métricas, nunca prompts).
 export * from "./lib/db.js";
 
-// Tarifas del usuario.
+// Tarifas del usuario + actualizador desde fuente curada (LiteLLM).
 export * from "./lib/pricing.js";
+export * from "./lib/pricing-update.js";
 
 // IO de solo lectura: política de seguridad del motor, reutilizable por los
 // consumidores y por la capa de dominio (motor-agentico-insights).

@@ -17,6 +17,7 @@ export interface Config {
   agentPaths: Record<string, string>;
   timeZone: string; // IANA, ej. "America/Merida". Vacío = zona del sistema.
   waste: WasteThresholds;
+  pricing: { maxAgeDays: number; autoUpdate: boolean };
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -27,6 +28,7 @@ export const DEFAULT_CONFIG: Config = {
   agentPaths: {},
   timeZone: "",
   waste: { ...DEFAULT_WASTE },
+  pricing: { maxAgeDays: 7, autoUpdate: true },
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -42,7 +44,7 @@ function nonNegative(value: unknown, field: string, integer = false): void {
 /** Valida únicamente las claves recibidas, para preservar PUTs parciales. */
 export function validateConfig(value: unknown): Partial<Config> {
   if (!isRecord(value)) throw new Error("config inválida: se esperaba un objeto");
-  const allowed = new Set(["hourlyRate", "staleDays", "minutesPerUseDefault", "minutesPerUse", "agentPaths", "timeZone", "waste"]);
+  const allowed = new Set(["hourlyRate", "staleDays", "minutesPerUseDefault", "minutesPerUse", "agentPaths", "timeZone", "waste", "pricing"]);
   for (const key of Object.keys(value)) if (!allowed.has(key)) throw new Error(`config inválida: clave desconocida '${key}'`);
   if (value.hourlyRate !== undefined) nonNegative(value.hourlyRate, "hourlyRate");
   if (value.staleDays !== undefined) nonNegative(value.staleDays, "staleDays", true);
@@ -74,6 +76,15 @@ export function validateConfig(value: unknown): Partial<Config> {
       }
     }
   }
+  if (value.pricing !== undefined) {
+    if (!isRecord(value.pricing)) throw new Error("config inválida: pricing");
+    const p = value.pricing;
+    for (const key of Object.keys(p)) {
+      if (key !== "maxAgeDays" && key !== "autoUpdate") throw new Error(`config inválida: pricing.${key}`);
+    }
+    if (p.maxAgeDays !== undefined) nonNegative(p.maxAgeDays, "pricing.maxAgeDays", true);
+    if (p.autoUpdate !== undefined && typeof p.autoUpdate !== "boolean") throw new Error("config inválida: pricing.autoUpdate debe ser booleano");
+  }
   return value as Partial<Config>;
 }
 
@@ -88,6 +99,7 @@ function merge(partial: Partial<Config>): Config {
     minutesPerUse: { ...DEFAULT_CONFIG.minutesPerUse, ...(partial.minutesPerUse ?? {}) },
     agentPaths: { ...DEFAULT_CONFIG.agentPaths, ...(partial.agentPaths ?? {}) },
     waste: { ...DEFAULT_WASTE, ...(partial.waste ?? {}) },
+    pricing: { ...DEFAULT_CONFIG.pricing, ...(partial.pricing ?? {}) },
   };
 }
 

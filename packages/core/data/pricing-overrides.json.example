@@ -1,0 +1,6 @@
+{
+  "$comment": "Copia este archivo a <tu-data-dir>/pricing-overrides.json. Mismo formato que pricing.json; estas tarifas GANAN sobre LiteLLM y nunca son tocadas por el updater. Modelos locales que LiteLLM no conoce se preservan automáticamente (no hace falta duplicarlos acá).",
+  "models": {
+    "mi-modelo-interno": { "input": 1, "output": 2 }
+  }
+}

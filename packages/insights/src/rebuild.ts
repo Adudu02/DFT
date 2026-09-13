@@ -13,6 +13,7 @@ import {
 } from "motor-agentico-core";
 import { unlink } from "node:fs/promises";
 import { loadConfig } from "./config.js";
+import { autoPricingCheck } from "./pricing-auto.js";
 import { syncMemoryNodes } from "./memory_sync.js";
 
 export async function rebuild(
@@ -27,6 +28,8 @@ export async function rebuild(
     // Honra config.agentPaths salvo que el llamador fuerce una raíz (tests).
     const config = await loadConfig();
     const roots = rootsFromConfig(config.agentPaths);
+    // Auto-chequeo de pricing (best-effort, una vez por proceso, no bloquea).
+    void autoPricingCheck(config);
     const summary = await ingestAll(db, {
       staleDays: config.staleDays,
       timeZone: config.timeZone,
