@@ -92,7 +92,7 @@ export function Configuracion() {
         <Field label="Minutos por uso (default)">
           <input type="number" value={form.minutesPerUseDefault} onChange={num("minutesPerUseDefault")} className="in" />
         </Field>
-        <div className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Fugas (Ahorro)</div>
+        <h3 className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Fugas (Ahorro)</h3>
         <Field label="Min. acierto de caché (0–1)">
           <input type="number" step="0.05" value={form.waste.minCacheRatio} onChange={numW("minCacheRatio")} className="in" />
         </Field>
@@ -114,7 +114,7 @@ export function Configuracion() {
         <Field label="Min. turnos triviales para señalar">
           <input type="number" value={form.waste.mismatchMinTurns} onChange={numW("mismatchMinTurns")} className="in" />
         </Field>
-        <div className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Downgrade paths (modelo caro → destino)</div>
+        <h3 className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Downgrade paths (modelo caro → destino)</h3>
         <textarea
           value={downgradeText}
           onChange={editDowngrade}
@@ -125,7 +125,7 @@ export function Configuracion() {
         />
         {jsonError && <div className="text-xs text-term-red mt-1">JSON inválido: {jsonError}</div>}
         <div className="text-xs text-term-muted">Cada entrada mapea un modelo caro a su destino de downgrade para turnos triviales.</div>
-        <div className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Rutas de agentes</div>
+        <h3 className="text-term-muted text-xs uppercase tracking-widest mt-3 mb-2">Rutas de agentes</h3>
         <Field label="Claude Code (vacío = ~/.claude/projects)">
           <input
             type="text"

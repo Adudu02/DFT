@@ -34,6 +34,7 @@ export function RefreshControl() {
       </span>
       <button type="button"
         onClick={run}
+        aria-label="Refrescar datos"
         disabled={busy}
         title="Reingerir transcripts y refrescar"
         className="px-2 py-0.5 rounded border border-term-border text-term-amber hover:border-term-amber disabled:opacity-50"
@@ -42,6 +43,7 @@ export function RefreshControl() {
       </button>
       <button type="button"
         onClick={() => setAuto((a) => !a)}
+        aria-pressed={auto}
         title={`Auto-refresco cada ${REFRESH_MS / 1000}s`}
         className={`px-2 py-0.5 rounded border ${
           auto ? "bg-term-green text-black border-term-green" : "border-term-border text-term-muted"

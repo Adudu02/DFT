@@ -21,7 +21,7 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-term-border px-4 sm:px-8 py-4 flex flex-wrap items-center gap-x-6 gap-y-3 sticky top-0 bg-term-bg/95 backdrop-blur z-10">
-        <span className="brand text-2xl sm:text-3xl text-term-text whitespace-nowrap mr-auto">How much you messed up?</span>
+        <h1 className="brand text-2xl sm:text-3xl text-term-text whitespace-nowrap mr-auto">How much you messed up?</h1>
         <nav className="order-3 w-full overflow-x-auto flex gap-5 text-sm sm:order-none sm:w-auto">
           {PAGES.map(({ path, label }) => (
             <NavLink
