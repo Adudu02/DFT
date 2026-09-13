@@ -4,6 +4,7 @@
  * proyecto. Aristas: reference ([[wikilink]] o link md), origin
  * (originSessionId), contains (índice → memorias). Obsoleto = mtime > umbral.
  */
+import type { Dirent } from "node:fs";
 import { stat } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { readFileRO, readDirRO } from "./fs-readonly.js";
@@ -77,7 +78,7 @@ export async function scanMemory(
   const links: MemLink[] = [];
   const sessionIds = new Set<string>();
 
-  let projects;
+  let projects: Dirent[];
   try {
     projects = await readDirRO(root);
   } catch {
@@ -87,7 +88,7 @@ export async function scanMemory(
   for (const p of projects) {
     if (!p.isDirectory()) continue;
     const memDir = join(root, p.name, "memory");
-    let files;
+    let files: Dirent[];
     try {
       files = await readDirRO(memDir);
     } catch {

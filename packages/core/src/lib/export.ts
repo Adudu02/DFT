@@ -33,5 +33,5 @@ export function exportCsv(data: ExportData): string {
     ...data.sessions.map((row) => ({ recordType: "session", ...row })),
     ...data.usageEvents.map((row) => ({ recordType: "usage_event", ...row })),
   ];
-  return [headers.join(","), ...rows.map((row) => headers.map((key) => csvCell(row[key])).join(","))].join("\n") + "\n";
+  return `${[headers.join(","), ...rows.map((row) => headers.map((key) => csvCell(row[key])).join(","))].join("\n")}\n`;
 }

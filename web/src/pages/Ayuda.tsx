@@ -14,7 +14,7 @@ export function Ayuda() {
             <span className="text-term-amber">Detección automática.</span> Al arrancar
             (<code className="text-term-amber">npm run serve</code>) se ingieren solas:
             <ul className="ml-4 mt-1 text-term-muted list-disc">
-              <li>Claude Code → <code>~/.claude/projects/**/*.jsonl</code></li>
+              <li>Claude Code → <code>~/.claude/projects{/**/}*.jsonl</code></li>
               <li>Codex → <code>~/.codex/sessions/**</code> y <code>archived_sessions/</code></li>
               <li>Qwen → <code>~/.qwen/usage/token-usage-*.jsonl</code></li>
             </ul>

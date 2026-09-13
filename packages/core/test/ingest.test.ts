@@ -72,12 +72,12 @@ describe("ingestAll", () => {
         type: "assistant", timestamp: "2026-07-01T09:00:00.000Z", sessionId: "s1", requestId: id,
         message: { id, model, usage: { input_tokens: 1000, output_tokens: 1000, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 } },
       });
-    writeFileSync(path, line("r1", "claude-opus-4-8") + "\n");
+    writeFileSync(path, `${line("r1", "claude-opus-4-8")}\n`);
     const db = freshDb();
     const a = await ingestAll(db, { projectsRoot: tmp, pricing });
     expect(a.eventsInserted).toBe(1);
     // append una linea nueva
-    writeFileSync(path, line("r1", "claude-opus-4-8") + "\n" + line("r2", "claude-opus-4-8") + "\n");
+    writeFileSync(path, `${line("r1", "claude-opus-4-8")}\n${line("r2", "claude-opus-4-8")}\n`);
     const b = await ingestAll(db, { projectsRoot: tmp, pricing });
     expect(b.eventsInserted).toBe(1); // solo la nueva
     expect(countEvents(db)).toBe(2);

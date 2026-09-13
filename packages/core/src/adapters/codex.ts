@@ -15,6 +15,7 @@
  * Modelo desconocido (gpt-*) => se conserva; la tarifa se decide en el motor de
  * costos (0 + badge hasta que el usuario lo agregue a pricing.json).
  */
+import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { readDirRO, readFileRO } from "../lib/fs-readonly.js";
@@ -113,7 +114,7 @@ export function parseCodexLines(
 export async function discoverCodexSessions(root: string = defaultCodexRoot()): Promise<string[]> {
   const out: string[] = [];
   async function walk(dir: string): Promise<void> {
-    let entries;
+    let entries: Dirent[];
     try {
       entries = await readDirRO(dir);
     } catch {

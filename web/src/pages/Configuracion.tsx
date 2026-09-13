@@ -40,10 +40,10 @@ export function Configuracion() {
       const r = await fetch("/api/pricing", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const j = await r.json();
       setFailed(!r.ok);
-      setMsg(j.ok ? "pricing guardado — corre rebuild para recalcular" : "error: " + j.error);
+      setMsg(j.ok ? "pricing guardado — corre rebuild para recalcular" : `error: ${j.error}`);
     } catch (e) {
       setFailed(true);
-      setMsg("JSON inválido: " + String(e));
+      setMsg(`JSON inválido: ${String(e)}`);
     }
   };
   const rebuild = async () => {
@@ -139,7 +139,7 @@ export function Configuracion() {
           <input
             type="text"
             placeholder="~/.codex"
-            value={form.agentPaths["codex"] ?? ""}
+            value={form.agentPaths.codex ?? ""}
             onChange={(e) => setForm({ ...form, agentPaths: { ...form.agentPaths, codex: e.target.value } })}
             className="in"
           />
@@ -148,13 +148,13 @@ export function Configuracion() {
           <input
             type="text"
             placeholder="~/.qwen"
-            value={form.agentPaths["qwen"] ?? ""}
+            value={form.agentPaths.qwen ?? ""}
             onChange={(e) => setForm({ ...form, agentPaths: { ...form.agentPaths, qwen: e.target.value } })}
             className="in"
           />
         </Field>
         <div className="text-xs text-term-muted">Tras cambiar rutas, corré Rebuild para reingestar.</div>
-        <button onClick={saveConfig} disabled={jsonError !== null} className="btn mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
+        <button type="button" onClick={saveConfig} disabled={jsonError !== null} className="btn mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
           Guardar configuración
         </button>
       </Panel>
@@ -167,10 +167,10 @@ export function Configuracion() {
           className="w-full h-64 bg-term-bg border border-term-border rounded p-2 text-xs font-mono text-term-amber"
         />
         <div className="flex gap-2 mt-2">
-          <button onClick={savePricing} className="btn">
+          <button type="button" onClick={savePricing} className="btn">
             Guardar pricing
           </button>
-          <button onClick={rebuild} className="btn">
+          <button type="button" onClick={rebuild} className="btn">
             Rebuild
           </button>
         </div>

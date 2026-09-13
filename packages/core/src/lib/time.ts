@@ -8,7 +8,7 @@
 /** YYYY-MM-DD en `timeZone` (vacío = zona del sistema). Zona inválida => UTC. */
 export function dayInTz(ts: string, timeZone?: string): string {
   const d = new Date(ts);
-  if (isNaN(d.getTime())) return ts.slice(0, 10);
+  if (Number.isNaN(d.getTime())) return ts.slice(0, 10);
   try {
     // en-CA formatea como YYYY-MM-DD, que es justo el formato que guardamos.
     return d.toLocaleDateString("en-CA", timeZone ? { timeZone } : {});

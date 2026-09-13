@@ -51,7 +51,7 @@ export async function loadPricing(path = defaultPricingPath()): Promise<Pricing>
 
 export async function savePricing(pricing: Pricing, path = defaultPricingPath()): Promise<Pricing> {
   const valid = validatePricing(pricing);
-  await writeFile(path, JSON.stringify(valid, null, 2) + "\n", "utf8");
+  await writeFile(path, `${JSON.stringify(valid, null, 2)}\n`, "utf8");
   return valid;
 }
 

@@ -7,7 +7,11 @@ import { openDb } from "../src/lib/db.js";
 
 describe("openDb", () => {
   const dirs: string[] = [];
-  afterEach(() => dirs.splice(0).forEach((dir) => rmSync(dir, { recursive: true, force: true })));
+  afterEach(() =>
+  dirs.splice(0).forEach((dir) => {
+    rmSync(dir, { recursive: true, force: true });
+  }),
+);
 
   it("abre una DB anterior, migra source_path y conserva transacciones", () => {
     const dir = mkdtempSync(join(tmpdir(), "motor-db-"));

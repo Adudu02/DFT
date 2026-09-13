@@ -3,6 +3,7 @@
  * usos desde skills_usage y calcula $ ahorrado = usos·min·tarifa/60. Sin tarifa
  * (o sin minutos) => $0, como en las capturas de referencia.
  */
+import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { readFileRO, readDirRO } from "./fs-readonly.js";
@@ -75,7 +76,7 @@ export async function discoverCatalog(
   const claudeRoot = roots.claudeRoot ?? join(homedir(), ".claude");
   for (const [sub, category] of [["skills", "skill"], ["commands", "comando"]] as const) {
     const dir = join(claudeRoot, sub);
-    let entries;
+    let entries: Dirent[];
     try {
       entries = await readDirRO(dir);
     } catch {
@@ -90,7 +91,7 @@ export async function discoverCatalog(
   }
 
   async function scanCodex(dir: string): Promise<void> {
-    let entries;
+    let entries: Dirent[];
     try {
       entries = await readDirRO(dir);
     } catch {

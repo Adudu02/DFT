@@ -72,13 +72,13 @@ describe("ingest + getSkills", () => {
     const byName = Object.fromEntries(skills.map((s) => [s.name, s]));
 
     // caveman: 2 usos · 5 min · $120/h / 60 = $20
-    expect(byName["caveman"].uses).toBe(2);
-    expect(byName["caveman"].savedUsd).toBeCloseTo(20, 6);
-    expect(byName["caveman"].category).toBe("skill");
-    expect(byName["caveman"].inCatalog).toBe(true);
+    expect(byName.caveman.uses).toBe(2);
+    expect(byName.caveman.savedUsd).toBeCloseTo(20, 6);
+    expect(byName.caveman.category).toBe("skill");
+    expect(byName.caveman.inCatalog).toBe(true);
 
     // /model = builtin => categoria sistema
-    expect(byName["model"].category).toBe("sistema");
+    expect(byName.model.category).toBe("sistema");
     // frontend-design (Skill tool_use) no esta en el catalogo de prueba => otro
     expect(byName["frontend-design"].category).toBe("otro");
     // skill del catalogo sin uso aparece en gris (uses 0)
@@ -119,7 +119,7 @@ describe("config round-trip", () => {
 
   it("una config antigua sin waste lo agrega al guardarla", async () => {
     const path = join(tmp, "config.json");
-    writeFileSync(path, JSON.stringify({ hourlyRate: 90 }) + "\n");
+    writeFileSync(path, `${JSON.stringify({ hourlyRate: 90 })}\n`);
     expect((await loadConfig(path)).waste).toEqual(DEFAULT_CONFIG.waste);
     await saveConfig({ staleDays: 7 }, path);
     expect(JSON.parse(readFileSync(path, "utf8")).waste).toEqual(DEFAULT_CONFIG.waste);

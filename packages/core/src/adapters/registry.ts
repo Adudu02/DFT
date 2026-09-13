@@ -132,8 +132,8 @@ export function rootsFromConfig(
 ): { projectsRoot?: string; codexRoot: string; qwenRoot: string } {
   return {
     projectsRoot: expandTilde(agentPaths["claude-code"]) || undefined,
-    codexRoot: expandTilde(agentPaths["codex"]) || defaultCodexRoot(),
-    qwenRoot: expandTilde(agentPaths["qwen"]) || defaultQwenRoot(),
+    codexRoot: expandTilde(agentPaths.codex) || defaultCodexRoot(),
+    qwenRoot: expandTilde(agentPaths.qwen) || defaultQwenRoot(),
   };
 }
 

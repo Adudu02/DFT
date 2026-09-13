@@ -19,20 +19,20 @@ export function RefreshControl() {
     if (!auto) return;
     const id = setInterval(run, REFRESH_MS);
     return () => clearInterval(id);
-  }, [auto]);
+  }, [auto, run]);
 
   useEffect(() => {
     const id = setInterval(() => setAgo((n) => n + 1), 1000);
     return () => clearInterval(id);
-  }, [last]);
-  useEffect(() => setAgo(0), [last]);
+  }, []);
+  useEffect(() => setAgo(0), []);
 
   return (
     <div className="ml-auto flex items-center gap-2 text-xs whitespace-nowrap">
       <span className="text-term-muted">
         {busy ? "actualizando…" : last ? `hace ${ago}s` : "sin refrescar"}
       </span>
-      <button
+      <button type="button"
         onClick={run}
         disabled={busy}
         title="Reingerir transcripts y refrescar"
@@ -40,7 +40,7 @@ export function RefreshControl() {
       >
         ↻
       </button>
-      <button
+      <button type="button"
         onClick={() => setAuto((a) => !a)}
         title={`Auto-refresco cada ${REFRESH_MS / 1000}s`}
         className={`px-2 py-0.5 rounded border ${
