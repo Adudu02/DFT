@@ -126,6 +126,12 @@ describe("getSessionTurns — parsing real de prompts", () => {
     expect(results[0]?.prompt).toContain("parser");
     expect((db2.prepare("SELECT COUNT(*) AS n FROM memory_nodes").get() as { n: number }).n).toBe(before);
   });
+
+  it("múltiples coincidencias en una sesión aportan múltiples resultados", async () => {
+    // "os" está en "costos" (prompt 1) y en "los tests" (prompt 2)
+    const results = await searchPrompts(db2, "os");
+    expect(results.filter((r) => r.id === "prompts")).toHaveLength(2);
+  });
 });
 
 describe("getSessionTurns — zona horaria configurable", () => {
