@@ -53,6 +53,8 @@ export function Memoria() {
         ) : (
           <div className="overflow-x-auto">
             <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ minWidth: 480 }} role="img" aria-label="Grafo de memoria del proyecto">
+              <title>Grafo de memoria del proyecto</title>
+              <desc>Nodos de archivos de memoria enlazados a su sesión de origen; los obsoletos se destacan.</desc>
               {data.links.map((l, i) => {
                 const a = pos.get(l.source);
                 const b = pos.get(l.target);

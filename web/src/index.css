@@ -170,6 +170,16 @@ body {
   border-color: var(--gold-bright);
 }
 
+/* Foco de teclado visible y consistente (a11y): anillo carmesí solo con teclado. */
+.btn:focus-visible,
+.in:focus-visible,
+nav a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
