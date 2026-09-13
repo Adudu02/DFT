@@ -6,6 +6,8 @@
  * transcript original (solo lectura) en el momento de la consulta y los devuelve
  * sin persistirlos — la garantía "la DB solo guarda métricas" sigue intacta.
  */
+import { createReadStream } from "node:fs";
+import { createInterface } from "node:readline";
 import { readFileRO } from "./fs-readonly.js";
 import { dayInTz } from "./time.js";
 import type { DB } from "./db.js";
@@ -185,16 +187,21 @@ export async function searchPrompts(
   const results: PromptSearchResult[] = [];
   for (const session of sessions) {
     if (results.length >= max) break;
-    let raw: string;
+    // Streaming línea a línea (solo lectura): nunca carga el transcript completo.
+    const input = createReadStream(session.path, { encoding: "utf8" });
+    const rl = createInterface({ input, crlfDelay: Infinity });
     try {
-      raw = await readFileRO(session.path);
+      for await (const line of rl) {
+        const item = promptFromLine(line);
+        if (!item || !item.prompt.toLocaleLowerCase().includes(needle)) continue;
+        results.push({ ...session, prompt: item.prompt.slice(0, 300) });
+        if (results.length >= max) break;
+      }
     } catch {
-      continue;
-    }
-    for (const item of extractPrompts(raw)) {
-      if (!item.prompt.toLocaleLowerCase().includes(needle)) continue;
-      results.push({ ...session, prompt: item.prompt.slice(0, 300) });
-      if (results.length >= max) break;
+      continue; // el transcript ya no está o es ilegible: siguiente sesión
+    } finally {
+      rl.close();
+      input.destroy();
     }
   }
   return results;
@@ -250,28 +257,34 @@ function cleanPrompt(raw: string): string {
   return t.length > MAX_PROMPT_CHARS ? `${t.slice(0, MAX_PROMPT_CHARS)}…` : t;
 }
 
+/** Prompt de usuario en UNA línea de transcript (Claude Code o Codex), o null. */
+function promptFromLine(line: string): { ts: string; prompt: string } | null {
+  const t = line.trim();
+  if (!t) return null;
+  let o: any;
+  try {
+    o = JSON.parse(t);
+  } catch {
+    return null;
+  }
+  let text: string | null = null;
+  if (o.type === "user") {
+    text = claudeUserText(o.message?.content); // Claude Code
+  } else if (o.type === "event_msg" && o.payload?.type === "user_message") {
+    text = typeof o.payload.message === "string" ? o.payload.message : null; // Codex
+  }
+  if (!text) return null;
+  const prompt = cleanPrompt(text);
+  if (!prompt) return null;
+  return { ts: String(o.timestamp ?? ""), prompt };
+}
+
 /** Prompts del usuario en un transcript (Claude Code o Codex), en orden. */
 function extractPrompts(raw: string): { ts: string; prompt: string }[] {
   const out: { ts: string; prompt: string }[] = [];
   for (const line of raw.split("\n")) {
-    const t = line.trim();
-    if (!t) continue;
-    let o: any;
-    try {
-      o = JSON.parse(t);
-    } catch {
-      continue;
-    }
-    let text: string | null = null;
-    if (o.type === "user") {
-      text = claudeUserText(o.message?.content); // Claude Code
-    } else if (o.type === "event_msg" && o.payload?.type === "user_message") {
-      text = typeof o.payload.message === "string" ? o.payload.message : null; // Codex
-    }
-    if (!text) continue;
-    const prompt = cleanPrompt(text);
-    if (!prompt) continue;
-    out.push({ ts: String(o.timestamp ?? ""), prompt });
+    const item = promptFromLine(line);
+    if (item) out.push(item);
   }
   return out;
 }
