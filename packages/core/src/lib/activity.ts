@@ -198,7 +198,6 @@ export async function searchPrompts(
         if (results.length >= max) break;
       }
     } catch {
-      continue; // el transcript ya no está o es ilegible: siguiente sesión
     } finally {
       rl.close();
       input.destroy();

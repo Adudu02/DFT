@@ -40,6 +40,7 @@ export * from "./quota/refresh.js";
 // IO de solo lectura: política de seguridad del motor, reutilizable por los
 // consumidores y por la capa de dominio (motor-agentico-insights).
 export * from "./lib/fs-readonly.js";
+export * from "./lib/sqlite-snapshot.js";
 
 // Motor de costos y vistas derivadas.
 export * from "./lib/cost.js";

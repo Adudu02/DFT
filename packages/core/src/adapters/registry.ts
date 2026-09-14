@@ -41,6 +41,8 @@ import {
   deriveGeminiIds,
   parseGeminiSkills,
 } from "./gemini.js";
+import { opencodeDbSyncAdapter } from "./opencode.js";
+import { grokDbSyncAdapter } from "./grok.js";
 
 export interface ParsedLine {
   dedupKey: string;
@@ -159,6 +161,33 @@ export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: stri
   if (geminiRoot) adapters.push(geminiAdapter(geminiRoot));
 
   return adapters;
+}
+
+/**
+ * Adapters de fuentes SQLite (workstream A2): la fuente es una DB viva, así que
+ * el adapter no entra al pipeline de archivos — hace snapshot read-only
+ * (lib/sqlite-snapshot.ts) y sincroniza filas él mismo (semántica por tipo de
+ * fila: acumulativa vs append-only).
+ */
+export interface DbSyncAdapter {
+  id: string;
+  /** Path de la DB fuente (read-only para el motor). */
+  sourcePath: string;
+  /** Sincroniza filas del snapshot hacia `target`. Conteo honesto de escrituras. */
+  sync(target: import("../lib/db.js").DB, snapshotDb: import("better-sqlite3").Database): Promise<{ eventsInserted: number; skipped: number }>;
+}
+
+export function getDbSyncAdapters(roots: { claudeRoot?: string; opencodeRoot?: string; grokRoot?: string } = {}): DbSyncAdapter[] {
+  const out: DbSyncAdapter[] = [];
+  const opencodeRoot = roots.opencodeRoot ?? (roots.claudeRoot ? undefined : joinHome(".local", "share", "opencode", "opencode.db"));
+  if (opencodeRoot) out.push(opencodeDbSyncAdapter(opencodeRoot));
+  const grokRoot = roots.grokRoot ?? (roots.claudeRoot ? undefined : joinHome(".grok", "grok.db"));
+  if (grokRoot) out.push(grokDbSyncAdapter(grokRoot));
+  return out;
+}
+
+function joinHome(...parts: string[]): string {
+  return join(homedir(), ...parts);
 }
 
 /**
