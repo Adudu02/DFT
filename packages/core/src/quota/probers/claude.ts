@@ -7,8 +7,8 @@
  *  - schema nuevo: `limits[]` con `kind: session|weekly_all|weekly_scoped`.
  * Errores con causa sanitizada (nunca el token).
  */
-import { join } from "node:path";
 import { readFileRO } from "../../lib/fs-readonly.js";
+import { homePath } from "../../lib/paths.js";
 import type { ProberContext, QuotaSnapshot } from "../types.js";
 
 const USAGE_URL = "https://api.anthropic.com/api/oauth/usage";
@@ -70,7 +70,7 @@ export function parseClaudeUsage(data: unknown, now: Date): QuotaSnapshot[] {
 }
 
 export async function probeClaude(ctx: ProberContext): Promise<QuotaSnapshot[]> {
-  const raw = await readFileRO(ctx.claudeCredentialsPath ?? joinHome(".claude", ".credentials.json"));
+  const raw = await readFileRO(ctx.claudeCredentialsPath ?? homePath(".claude", ".credentials.json"));
   const creds = JSON.parse(raw);
   const token = creds?.claudeAiOauth?.accessToken;
   if (typeof token !== "string" || !token) throw new Error("sin accessToken en ~/.claude/.credentials.json");
@@ -86,6 +86,3 @@ export async function probeClaude(ctx: ProberContext): Promise<QuotaSnapshot[]> 
   return parseClaudeUsage(await res.json(), ctx.now());
 }
 
-function joinHome(...parts: string[]): string {
-  return join(process.env.HOME ?? "", ...parts);
-}

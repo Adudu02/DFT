@@ -15,6 +15,7 @@
  */
 import type Database from "better-sqlite3";
 import type { DB } from "../lib/db.js";
+import { toIsoTimestamp } from "../lib/time.js";
 
 export function grokDbSyncAdapter(sourcePath: string) {
   return {
@@ -52,7 +53,7 @@ export function grokDbSyncAdapter(sourcePath: string) {
       run.run();
       try {
         for (const row of rows) {
-          const ts = normalizeTimestamp(row[tsCol]);
+          const ts = toIsoTimestamp(row[tsCol]);
           if (!ts) {
             skipped++;
             continue;
@@ -80,14 +81,3 @@ export function grokDbSyncAdapter(sourcePath: string) {
   };
 }
 
-/** Acepta epoch-s, epoch-ms o ISO; null si no es interpretable. */
-function normalizeTimestamp(value: unknown): string | null {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    const ms = value > 1e12 ? value : value * 1000; // heurística epoch-ms vs epoch-s
-    return new Date(ms).toISOString();
-  }
-  if (typeof value === "string" && value && !Number.isNaN(Date.parse(value))) {
-    return new Date(value).toISOString();
-  }
-  return null;
-}

@@ -20,15 +20,10 @@ import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { readDirRO } from "../lib/fs-readonly.js";
-import type { SkillUsage, UsageEvent } from "./types.js";
+import type { ParsedLine, SkillUsage, UsageEvent } from "./types.js";
 
 export function defaultQwenRoot(): string {
   return join(homedir(), ".qwen");
-}
-
-interface ParsedLine {
-  dedupKey: string;
-  event: UsageEvent;
 }
 
 function splitLines(raw: string): string[] {

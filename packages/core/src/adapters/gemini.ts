@@ -17,15 +17,10 @@ import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { readDirRO } from "../lib/fs-readonly.js";
-import type { SkillUsage, UsageEvent } from "./types.js";
+import type { ParsedLine, SkillUsage } from "./types.js";
 
 export function defaultGeminiRoot(): string {
   return join(homedir(), ".gemini", "tmp");
-}
-
-interface ParsedLine {
-  dedupKey: string;
-  event: UsageEvent;
 }
 
 /** Descubre `session-*.jsonl` bajo `<hash>/chats/` (lista blanca estricta). */

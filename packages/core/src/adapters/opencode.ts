@@ -12,6 +12,7 @@
  */
 import type Database from "better-sqlite3";
 import type { DB } from "../lib/db.js";
+import { toIsoTimestamp } from "../lib/time.js";
 
 export function opencodeDbSyncAdapter(sourcePath: string) {
   return {
@@ -46,7 +47,7 @@ export function opencodeDbSyncAdapter(sourcePath: string) {
         const output = Number(row.tokens_output ?? 0) + Number(row.tokens_reasoning ?? 0); // reasoning es salida
         const cacheRead = Number(row.tokens_cache_read ?? 0);
         const cacheWrite = Number(row.tokens_cache_write ?? 0);
-        const ts = epochMsToIso(row.time_updated ?? row.time_created);
+        const ts = toIsoTimestamp(row.time_updated ?? row.time_created);
         if (!ts) {
           skipped++;
           continue;
@@ -69,7 +70,7 @@ export function opencodeDbSyncAdapter(sourcePath: string) {
           continue;
         }
 
-        upsertSession.run(sessionId, projectOf(row.directory), epochMsToIso(row.time_created) ?? ts, ts, sourcePath);
+        upsertSession.run(sessionId, projectOf(row.directory), toIsoTimestamp(row.time_created) ?? ts, ts, sourcePath);
         const run = target.prepare("BEGIN");
         run.run();
         try {
@@ -107,7 +108,3 @@ function parseModelId(raw: unknown): string {
   return raw;
 }
 
-function epochMsToIso(value: unknown): string | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  return new Date(value).toISOString();
-}
