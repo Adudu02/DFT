@@ -5,7 +5,7 @@
  * conoce la config. Best-effort: máx. una vez por proceso, nunca bloquea la
  * ingesta y todo fallo degrada en silencio (offline sigue funcionando).
  */
-import { loadPricing, pricingAgeStatus, runPricingUpdate } from "motor-agentico-core";
+import { loadPricing, pricingAgeStatus, runPricingUpdate, type Pricing } from "motor-agentico-core";
 import type { Config } from "./config.js";
 
 let checkedThisSession = false;
@@ -25,7 +25,7 @@ export async function autoPricingCheck(
   opts: { pricingPath?: string; run?: typeof runPricingUpdate } = {},
 ): Promise<boolean> {
   if (!config.pricing.autoUpdate || checkedThisSession) return false;
-  let pricing;
+  let pricing: Pricing;
   try {
     pricing = await loadPricing(opts.pricingPath);
   } catch {

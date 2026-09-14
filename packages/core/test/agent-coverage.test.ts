@@ -8,6 +8,7 @@ import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync } from "nod
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import Database from "better-sqlite3";
 import { openDb, type DB } from "../src/lib/db.js";
 import { ingestAll } from "../src/ingest.js";
 import { loadPricing } from "../src/lib/pricing.js";
@@ -31,7 +32,7 @@ const GEMINI_LINE = JSON.stringify({
   tokens: { input: 1000, output: 200, cached: 600, thoughts: 50, total: 650 },
 });
 
-describe("ingestAll — cobertura de 5 agentes", () => {
+describe("ingestAll — cobertura de 7 agentes (5 archivo + 2 SQLite)", () => {
   let tmp: string;
   let db: DB;
 
@@ -52,6 +53,23 @@ describe("ingestAll — cobertura de 5 agentes", () => {
     // gemini
     mkdirSync(join(tmp, "gemini", "hash1", "chats"), { recursive: true });
     writeFileSync(join(tmp, "gemini", "hash1", "chats", "session-g1.jsonl"), GEMINI_LINE + "\n");
+    // opencode (SQLite — schema real verificado 2026-09-14)
+    writeFileSync(join(tmp, "opencode.db"), ""); // lo crea el fixture de abajo
+    const oc = new Database(join(tmp, "opencode.db"));
+    oc.exec(`CREATE TABLE session (id TEXT PRIMARY KEY, directory TEXT, tokens_input INT, tokens_output INT,
+      tokens_reasoning INT, tokens_cache_read INT, tokens_cache_write INT, agent TEXT, model TEXT,
+      time_created INT, time_updated INT)`);
+    oc.prepare(`INSERT INTO session (id, directory, tokens_input, tokens_output, tokens_reasoning,
+      tokens_cache_read, tokens_cache_write, agent, model, time_created, time_updated)
+      VALUES ('ses_oc1', '/home/u/Projects/OcProj', 700, 150, 25, 300, 20, 'build',
+      '{"id":"glm-5.3","providerID":"zai"}', 1000, 2000)`).run();
+    oc.close();
+    // grok (SQLite — schema del plan, fixture-driven)
+    const gr = new Database(join(tmp, "grok.db"));
+    gr.exec(`CREATE TABLE usage_events (session_id TEXT, model TEXT, input_tokens INT,
+      output_tokens INT, total_tokens INT, cost_micros INT, created_at INT)`);
+    gr.prepare("INSERT INTO usage_events (session_id, model, input_tokens, output_tokens, total_tokens, cost_micros, created_at) VALUES ('g-1', 'grok-5', 100, 20, 120, 1500, ?)").run(Date.now() - 30_000);
+    gr.close();
 
     db = openDb(join(tmp, "motor.db"));
   });
@@ -68,13 +86,15 @@ describe("ingestAll — cobertura de 5 agentes", () => {
       qwenRoot: join(tmp, "qwen"),
       zcodeRoot: join(tmp, "zcode"),
       geminiRoot: join(tmp, "gemini"),
+      opencodeRoot: join(tmp, "opencode.db"),
+      grokRoot: join(tmp, "grok.db"),
       pricing: await loadPricing(),
     });
 
     const agents = (db.prepare("SELECT DISTINCT agent FROM sessions ORDER BY agent").all() as { agent: string }[]).map(
       (r) => r.agent,
     );
-    expect(agents).toEqual(["claude-code", "codex", "gemini", "qwen", "zcode"]);
+    expect(agents).toEqual(["claude-code", "codex", "gemini", "grok", "opencode", "qwen", "zcode"]);
 
     const byAgent = (agent: string): number =>
       (db.prepare("SELECT COUNT(*) AS n FROM usage_events ue JOIN sessions s ON s.id = ue.session_id WHERE s.agent = ?").get(agent) as { n: number }).n;
@@ -83,7 +103,9 @@ describe("ingestAll — cobertura de 5 agentes", () => {
     expect(byAgent("qwen")).toBeGreaterThan(0);
     expect(byAgent("zcode")).toBe(1);
     expect(byAgent("gemini")).toBe(1);
-    expect(summary.files).toBeGreaterThanOrEqual(5);
+    expect(byAgent("opencode")).toBe(1);
+    expect(byAgent("grok")).toBe(1);
+    expect(summary.files).toBeGreaterThanOrEqual(7);
 
     // ZCode: convención Anthropic (cache read aparte, NO restado del input)
     const zc = db.prepare(
@@ -105,6 +127,8 @@ describe("ingestAll — cobertura de 5 agentes", () => {
       qwenRoot: join(tmp, "qwen"),
       zcodeRoot: join(tmp, "zcode"),
       geminiRoot: join(tmp, "gemini"),
+      opencodeRoot: join(tmp, "opencode.db"),
+      grokRoot: join(tmp, "grok.db"),
       pricing: await loadPricing(),
     };
     await ingestAll(db, opts);
