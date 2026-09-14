@@ -147,11 +147,11 @@ async function ingestFile(
 /** Ingesta todos los transcripts descubiertos (todos los adapters) hacia `db`. */
 export async function ingestAll(
   db: DB,
-  opts: { projectsRoot?: string; codexRoot?: string; qwenRoot?: string; pricing?: Pricing; staleDays?: number; timeZone?: string; reparseSkills?: boolean } = {},
+  opts: { projectsRoot?: string; codexRoot?: string; qwenRoot?: string; zcodeRoot?: string; geminiRoot?: string; pricing?: Pricing; staleDays?: number; timeZone?: string; reparseSkills?: boolean } = {},
 ): Promise<IngestSummary> {
   const pricing = opts.pricing ?? (await loadPricing());
   const unknown = new UnknownModels();
-  const adapters = getIngestAdapters({ claudeRoot: opts.projectsRoot, codexRoot: opts.codexRoot, qwenRoot: opts.qwenRoot });
+  const adapters = getIngestAdapters({ claudeRoot: opts.projectsRoot, codexRoot: opts.codexRoot, qwenRoot: opts.qwenRoot, zcodeRoot: opts.zcodeRoot, geminiRoot: opts.geminiRoot });
 
   let files = 0;
   let eventsInserted = 0;

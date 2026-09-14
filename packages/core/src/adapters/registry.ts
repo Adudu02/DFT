@@ -27,6 +27,20 @@ import {
   deriveQwenIdsFromUsage,
   parseQwenSkills,
 } from "./qwen.js";
+import {
+  defaultZcodeRoot,
+  discoverZcodeRollouts,
+  parseZcodeLines,
+  deriveZcodeIds,
+  parseZcodeSkills,
+} from "./zcode.js";
+import {
+  defaultGeminiRoot,
+  discoverGeminiChats,
+  parseGeminiLines,
+  deriveGeminiIds,
+  parseGeminiSkills,
+} from "./gemini.js";
 
 export interface ParsedLine {
   dedupKey: string;
@@ -101,13 +115,34 @@ function qwenAdapter(root: string): IngestAdapter {
   };
 }
 
+function zcodeAdapter(root: string): IngestAdapter {
+  // sessionId vive en cada línea; el filename sirve de fallback en deriveIds.
+  return {
+    id: "zcode",
+    discover: () => discoverZcodeRollouts(root),
+    deriveIds: (path, raw) => deriveZcodeIds(path, raw),
+    parseLines: (raw, fromLine) => parseZcodeLines(raw, fromLine, null),
+    parseSkills: (raw, fromLine) => parseZcodeSkills(raw, fromLine),
+  };
+}
+
+function geminiAdapter(root: string): IngestAdapter {
+  return {
+    id: "gemini",
+    discover: () => discoverGeminiChats(root),
+    deriveIds: (path) => deriveGeminiIds(path),
+    parseLines: (raw, fromLine, sessionId) => parseGeminiLines(raw, fromLine, sessionId),
+    parseSkills: (raw, fromLine) => parseGeminiSkills(raw, fromLine),
+  };
+}
+
 /**
  * Adapters activos para la ingesta. Regla de aislamiento de tests: si el llamador
  * OVERRIDEA claudeRoot (fixtures), NO se agregan Codex/Qwen con sus raíces por
  * defecto — solo si se pasan explícitamente. En producción (sin overrides) todos
  * usan su raíz real.
  */
-export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: string; qwenRoot?: string } = {}): IngestAdapter[] {
+export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: string; qwenRoot?: string; zcodeRoot?: string; geminiRoot?: string } = {}): IngestAdapter[] {
   const claudeRoot = roots.claudeRoot ?? defaultProjectsRoot();
   const adapters: IngestAdapter[] = [claudeAdapter(claudeRoot)];
 
@@ -116,6 +151,12 @@ export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: stri
 
   const qwenRoot = roots.qwenRoot ?? (roots.claudeRoot ? undefined : defaultQwenRoot());
   if (qwenRoot) adapters.push(qwenAdapter(qwenRoot));
+
+  const zcodeRoot = roots.zcodeRoot ?? (roots.claudeRoot ? undefined : defaultZcodeRoot());
+  if (zcodeRoot) adapters.push(zcodeAdapter(zcodeRoot));
+
+  const geminiRoot = roots.geminiRoot ?? (roots.claudeRoot ? undefined : defaultGeminiRoot());
+  if (geminiRoot) adapters.push(geminiAdapter(geminiRoot));
 
   return adapters;
 }
@@ -129,11 +170,13 @@ export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: stri
  */
 export function rootsFromConfig(
   agentPaths: Record<string, string> = {},
-): { projectsRoot?: string; codexRoot: string; qwenRoot: string } {
+): { projectsRoot?: string; codexRoot: string; qwenRoot: string; zcodeRoot: string; geminiRoot: string } {
   return {
     projectsRoot: expandTilde(agentPaths["claude-code"]) || undefined,
     codexRoot: expandTilde(agentPaths.codex) || defaultCodexRoot(),
     qwenRoot: expandTilde(agentPaths.qwen) || defaultQwenRoot(),
+    zcodeRoot: expandTilde(agentPaths.zcode) || defaultZcodeRoot(),
+    geminiRoot: expandTilde(agentPaths.gemini) || defaultGeminiRoot(),
   };
 }
 
