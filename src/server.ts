@@ -18,6 +18,7 @@ import { loadConfig, saveConfig, type Config } from "motor-agentico-insights";
 import { discoverCatalog, getSkills } from "motor-agentico-insights";
 import { scanMemory, syncMemoryNodes } from "motor-agentico-insights";
 import { autoPricingCheck } from "motor-agentico-insights";
+import { cacheFreshness, readQuotaCache, refreshQuota, defaultQuotaCachePath } from "motor-agentico-core";
 import { getActivityPage, getSessionDetail, getSessionTurns, searchPrompts } from "motor-agentico-core";
 import { getWaste } from "motor-agentico-insights";
 import { writeReport } from "motor-agentico-core";
@@ -33,6 +34,12 @@ export interface ServerOptions {
   catalogRoots?: { claudeRoot?: string; codexRoot?: string };
   /** Raíz del build del frontend; inyectable para tests herméticos del fallback SPA. */
   distRoot?: string;
+  /** Caché de quota inyectable (tests). Default: <cwd>/data/quota-cache.json. */
+  quotaCachePath?: string;
+  /** fetch inyectable para los probers de quota (tests sin red). */
+  quotaFetch?: typeof fetch;
+  /** Credenciales de Claude inyectables (tests sin credenciales reales). */
+  quotaClaudeCredentialsPath?: string;
 }
 
 export async function buildServer(options: ServerOptions = {}) {
@@ -167,6 +174,43 @@ export async function buildServer(options: ServerOptions = {}) {
     const summary = await ingestAll(db, { pricing, staleDays: config.staleDays, reparseSkills: true, ...roots });
     const memories = await syncMemoryNodes(db, roots.projectsRoot ?? defaultProjectsRoot(), config.staleDays);
     return { ...summary, memories };
+  });
+
+  const quotaCachePath = options.quotaCachePath ?? defaultQuotaCachePath();
+
+  // GET /api/quota: SIEMPRE desde caché (offline-first); estado stale con edad.
+  app.get("/api/quota", async () => {
+    const cache = readQuotaCache(quotaCachePath);
+    const ttl = config.quota.refreshTtlMinutes;
+    const { fresh, ageMinutes } = cacheFreshness(cache, ttl);
+    return {
+      status: cache ? (fresh ? "live" : "stale") : "no-data",
+      ageMinutes,
+      ttlMinutes: ttl,
+      snapshots: cache?.snapshots ?? [],
+    };
+  });
+
+  // POST /api/quota/refresh: corre los probers habilitados (paralelo, aislado),
+  // fusiona la caché y responde por proveedor. Debounce 30 s.
+  let lastRefreshMs = 0;
+  app.post("/api/quota/refresh", async () => {
+    const nowMs = Date.now();
+    if (nowMs - lastRefreshMs < 30_000) {
+      return { ok: false, error: "refresh debounced (30s)", results: [] };
+    }
+    lastRefreshMs = nowMs;
+    const roots = rootsFromConfig(config.agentPaths);
+    const { cache, results } = await refreshQuota({
+      providers: config.quota.providers,
+      zaiApiKey: config.quota.zaiApiKey,
+      claudeCredentialsPath: options.quotaClaudeCredentialsPath,
+      codexRoot: roots.codexRoot,
+      cachePath: quotaCachePath,
+      fetchImpl: options.quotaFetch,
+    });
+    const { fresh, ageMinutes } = cacheFreshness(cache, config.quota.refreshTtlMinutes, Date.now());
+    return { ok: true, status: fresh ? "live" : "stale", ageMinutes, results };
   });
 
   const here = dirname(fileURLToPath(import.meta.url));

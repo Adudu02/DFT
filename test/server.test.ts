@@ -156,6 +156,46 @@ describe("HTTP contracts", () => {
     expect(body.verifiedAt).toBeNull();
   });
 
+  it("quota: GET desde caché inyectada y POST refresh con fetch falso", async () => {
+    // Servidor con caché inyectada en tmp y fetch falso (sin red).
+    mkdirSync(join(tmp, "qcache"), { recursive: true });
+    const cachePath = join(tmp, "qcache", "quota-cache.json");
+    const fetchedAt = new Date(Date.now() - 60_000).toISOString(); // hace 1 min: fresh
+    writeFileSync(cachePath, JSON.stringify({
+      version: 1,
+      fetchedAt,
+      snapshots: [{ provider: "claude", window: "five_hour", usedPercent: 10, fetchedAt, origin: "live" }],
+    }));
+    writeFileSync(join(tmp, "claude-creds.json"), JSON.stringify({ claudeAiOauth: { accessToken: "fake-token" } }));
+    const qServer = await buildServer({
+      dbPath: join(tmp, "q.db"),
+      configPath: join(tmp, "config.json"),
+      pricingPath: join(tmp, "pricing.json"),
+      quotaCachePath: cachePath,
+      quotaFetch: (async () => ({ ok: true, json: async () => ({ five_hour: { utilization: 42, resets_at: "2026-09-13T15:00:00Z" } }) })) as unknown as typeof fetch,
+      quotaClaudeCredentialsPath: join(tmp, "claude-creds.json"),
+    });
+    try {
+      const get = await qServer.app.inject({ method: "GET", url: "/api/quota" });
+      expect(get.statusCode).toBe(200);
+      expect(get.json().status).toBe("live");
+      expect(get.json().snapshots[0]).toMatchObject({ provider: "claude", usedPercent: 10 });
+
+      const refresh = await qServer.app.inject({ method: "POST", url: "/api/quota/refresh" });
+      expect(refresh.statusCode).toBe(200);
+      const body = refresh.json();
+      expect(body.ok).toBe(true);
+      const claude = body.results.find((r: { provider: string }) => r.provider === "claude");
+      expect(claude.status).toBe("live");
+      expect(claude.snapshots[0].usedPercent).toBe(42);
+
+      const after = await qServer.app.inject({ method: "GET", url: "/api/quota" });
+      expect(after.json().snapshots.find((s: { provider: string }) => s.provider === "claude").usedPercent).toBe(42);
+    } finally {
+      await qServer.app.close();
+    }
+  });
+
   it("rebuild reingesta y devuelve contadores", async () => {
     const rebuild = await server.app.inject({ method: "POST", url: "/api/rebuild" });
     expect(rebuild.statusCode).toBe(200);

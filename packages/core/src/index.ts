@@ -30,6 +30,13 @@ export * from "./lib/db.js";
 export * from "./lib/pricing.js";
 export * from "./lib/pricing-update.js";
 
+// Quota probes (add-quota-probes): estado RESTANTE por proveedor/ventana,
+// vía endpoints de solo-consulta con credenciales locales. Sin inferencia.
+export * from "./quota/types.js";
+export * from "./quota/cache.js";
+export * from "./quota/probers.js";
+export * from "./quota/refresh.js";
+
 // IO de solo lectura: política de seguridad del motor, reutilizable por los
 // consumidores y por la capa de dominio (motor-agentico-insights).
 export * from "./lib/fs-readonly.js";
