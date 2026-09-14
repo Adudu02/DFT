@@ -13,15 +13,20 @@
  * disponible de (`created_at`, `timestamp`, `time_created`), aceptando epoch-s,
  * epoch-ms o ISO. Filas sin timestamp utilizable => skipped.
  */
-import type Database from "better-sqlite3";
 import type { DB } from "../lib/db.js";
+import { withSqliteSnapshot } from "../lib/sqlite-snapshot.js";
 import { toIsoTimestamp } from "../lib/time.js";
 
-export function grokDbSyncAdapter(sourcePath: string) {
+export function grokSyncAdapter(sourcePath: string) {
   return {
     id: "grok",
-    sourcePath,
-    async sync(target: DB, snapshotDb: Database.Database): Promise<{ eventsInserted: number; skipped: number }> {
+    async sync(target: DB): Promise<{ eventsInserted: number; skipped: number }> {
+      return withSqliteSnapshot(sourcePath, (snapshotDb) => doSync(target, sourcePath, snapshotDb));
+    },
+  };
+}
+
+async function doSync(target: DB, sourcePath: string, snapshotDb: import("better-sqlite3").Database): Promise<{ eventsInserted: number; skipped: number }> {
       const cols = (snapshotDb.prepare("PRAGMA table_info(usage_events)").all() as { name: string }[]).map(
         (c) => c.name,
       );
@@ -77,7 +82,5 @@ export function grokDbSyncAdapter(sourcePath: string) {
         throw err;
       }
       return { eventsInserted, skipped };
-    },
-  };
 }
 

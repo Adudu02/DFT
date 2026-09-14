@@ -32,7 +32,7 @@ const GEMINI_LINE = JSON.stringify({
   tokens: { input: 1000, output: 200, cached: 600, thoughts: 50, total: 650 },
 });
 
-describe("ingestAll — cobertura de 7 agentes (5 archivo + 2 SQLite)", () => {
+describe("ingestAll — cobertura de 10 agentes (5 archivo + 5 sync)", () => {
   let tmp: string;
   let db: DB;
 
@@ -70,6 +70,23 @@ describe("ingestAll — cobertura de 7 agentes (5 archivo + 2 SQLite)", () => {
       output_tokens INT, total_tokens INT, cost_micros INT, created_at INT)`);
     gr.prepare("INSERT INTO usage_events (session_id, model, input_tokens, output_tokens, total_tokens, cost_micros, created_at) VALUES ('g-1', 'grok-5', 100, 20, 120, 1500, ?)").run(Date.now() - 30_000);
     gr.close();
+    // goose (SQLite acumulativo)
+    const gs = new Database(join(tmp, "goose.db"));
+    gs.exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, accumulated_input_tokens INT, accumulated_output_tokens INT, model TEXT, updated_at INT)`);
+    gs.prepare("INSERT INTO sessions (id, accumulated_input_tokens, accumulated_output_tokens, model, updated_at) VALUES ('gs-1', 500, 100, 'goose-4', ?)").run(Date.now() - 60_000);
+    gs.close();
+    // amp (threads JSON)
+    mkdirSync(join(tmp, "amp-threads"), { recursive: true });
+    writeFileSync(join(tmp, "amp-threads", "T-abc.json"), JSON.stringify({
+      usage: { inputTokens: 3000, outputTokens: 400, cacheReadInputTokens: 2500, cacheCreationInputTokens: 60 },
+      model: "amp-model",
+      updatedAt: Date.now() - 30_000,
+    }));
+    // crush (SQLite cost-only)
+    const cr = new Database(join(tmp, "crush.db"));
+    cr.exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, cost REAL, model TEXT, created_at INT)`);
+    cr.prepare("INSERT INTO sessions (id, cost, model, created_at) VALUES ('cr-1', 1.25, 'crush-model', ?)").run(Date.now() - 90_000);
+    cr.close();
 
     db = openDb(join(tmp, "motor.db"));
   });
@@ -88,13 +105,16 @@ describe("ingestAll — cobertura de 7 agentes (5 archivo + 2 SQLite)", () => {
       geminiRoot: join(tmp, "gemini"),
       opencodeRoot: join(tmp, "opencode.db"),
       grokRoot: join(tmp, "grok.db"),
+      gooseRoot: join(tmp, "goose.db"),
+      ampRoot: join(tmp, "amp-threads"),
+      crushRoot: join(tmp, "crush.db"),
       pricing: await loadPricing(),
     });
 
     const agents = (db.prepare("SELECT DISTINCT agent FROM sessions ORDER BY agent").all() as { agent: string }[]).map(
       (r) => r.agent,
     );
-    expect(agents).toEqual(["claude-code", "codex", "gemini", "grok", "opencode", "qwen", "zcode"]);
+    expect(agents).toEqual(["amp", "claude-code", "codex", "crush", "gemini", "goose", "grok", "opencode", "qwen", "zcode"]);
 
     const byAgent = (agent: string): number =>
       (db.prepare("SELECT COUNT(*) AS n FROM usage_events ue JOIN sessions s ON s.id = ue.session_id WHERE s.agent = ?").get(agent) as { n: number }).n;
@@ -105,7 +125,10 @@ describe("ingestAll — cobertura de 7 agentes (5 archivo + 2 SQLite)", () => {
     expect(byAgent("gemini")).toBe(1);
     expect(byAgent("opencode")).toBe(1);
     expect(byAgent("grok")).toBe(1);
-    expect(summary.files).toBeGreaterThanOrEqual(7);
+    expect(byAgent("goose")).toBe(1);
+    expect(byAgent("amp")).toBe(1);
+    expect(byAgent("crush")).toBe(1);
+    expect(summary.files).toBeGreaterThanOrEqual(10);
 
     // ZCode: convención Anthropic (cache read aparte, NO restado del input)
     const zc = db.prepare(
@@ -129,6 +152,9 @@ describe("ingestAll — cobertura de 7 agentes (5 archivo + 2 SQLite)", () => {
       geminiRoot: join(tmp, "gemini"),
       opencodeRoot: join(tmp, "opencode.db"),
       grokRoot: join(tmp, "grok.db"),
+      gooseRoot: join(tmp, "goose.db"),
+      ampRoot: join(tmp, "amp-threads"),
+      crushRoot: join(tmp, "crush.db"),
       pricing: await loadPricing(),
     };
     await ingestAll(db, opts);
