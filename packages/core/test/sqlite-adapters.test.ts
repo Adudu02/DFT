@@ -4,12 +4,12 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Database from "better-sqlite3";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withSqliteSnapshot } from "../src/lib/sqlite-snapshot.js";
-import { opencodeDbSyncAdapter } from "../src/adapters/opencode.js";
-import { grokDbSyncAdapter } from "../src/adapters/grok.js";
+import { opencodeSyncAdapter } from "../src/adapters/opencode.js";
+import { grokSyncAdapter } from "../src/adapters/grok.js";
 import { openDb, type DB } from "../src/lib/db.js";
 
 let tmp: string;
@@ -51,7 +51,7 @@ describe("opencode — sync acumulativa (schema real verificado)", () => {
   let db: DB;
   let srcDbPath: string;
   let srcDb: Database.Database;
-  let adapter: ReturnType<typeof opencodeDbSyncAdapter>;
+  let adapter: ReturnType<typeof opencodeSyncAdapter>;
 
   beforeEach(() => {
     db = openDb(join(tmp, "motor.db"));
@@ -61,7 +61,7 @@ describe("opencode — sync acumulativa (schema real verificado)", () => {
       id TEXT PRIMARY KEY, directory TEXT, tokens_input INT, tokens_output INT,
       tokens_reasoning INT, tokens_cache_read INT, tokens_cache_write INT,
       agent TEXT, model TEXT, time_created INT, time_updated INT)`);
-    adapter = opencodeDbSyncAdapter(srcDbPath);
+    adapter = opencodeSyncAdapter(srcDbPath);
   });
   afterEach(() => {
     srcDb.close();
@@ -77,7 +77,7 @@ describe("opencode — sync acumulativa (schema real verificado)", () => {
 
   it("primera sync: proyecto real del directory, modelo JSON, reasoning plegado", async () => {
     seed([1000, 200, 50], 5000);
-    const res = await adapter.sync(db, srcDb);
+    const res = await adapter.sync(db);
     expect(res.eventsInserted).toBe(1);
     const row = db.prepare("SELECT project, agent FROM sessions WHERE id = 'ses_1'").get() as { project: string; agent: string };
     expect(row).toMatchObject({ project: "SSAI", agent: "opencode" });
@@ -86,16 +86,16 @@ describe("opencode — sync acumulativa (schema real verificado)", () => {
   });
   it("re-sync sin cambios => 0 escrituras (idempotente)", async () => {
     seed([1000, 200, 50], 5000);
-    await adapter.sync(db, srcDb);
-    const second = await adapter.sync(db, srcDb);
+    await adapter.sync(db);
+    const second = await adapter.sync(db);
     expect(second.eventsInserted).toBe(0);
     expect(second.skipped).toBe(1);
   });
   it("sesión que crece => reemplaza sin duplicar", async () => {
     seed([1000, 200, 50], 5000);
-    await adapter.sync(db, srcDb);
+    await adapter.sync(db);
     seed([2000, 400, 80], 9000); // creció
-    const res = await adapter.sync(db, srcDb);
+    const res = await adapter.sync(db);
     expect(res.eventsInserted).toBe(1);
     const n = (db.prepare("SELECT COUNT(*) AS n FROM usage_events WHERE dedup_key LIKE 'opencode::ses_1%'").get() as { n: number }).n;
     expect(n).toBe(1); // una sola fila: reemplazada, no acumulada
@@ -108,7 +108,7 @@ describe("grok — sync append-only (schema del plan, fixture-driven)", () => {
   let db: DB;
   let srcDbPath: string;
   let srcDb: Database.Database;
-  let adapter: ReturnType<typeof grokDbSyncAdapter>;
+  let adapter: ReturnType<typeof grokSyncAdapter>;
 
   beforeEach(() => {
     db = openDb(join(tmp, "motor.db"));
@@ -118,7 +118,7 @@ describe("grok — sync append-only (schema del plan, fixture-driven)", () => {
     srcDb.exec(`CREATE TABLE usage_events (
       session_id TEXT, model TEXT, input_tokens INT, output_tokens INT,
       total_tokens INT, cost_micros INT, created_at INT)`);
-    adapter = grokDbSyncAdapter(srcDbPath);
+    adapter = grokSyncAdapter(srcDbPath);
   });
   afterEach(() => {
     srcDb.close();
@@ -134,9 +134,9 @@ describe("grok — sync append-only (schema del plan, fixture-driven)", () => {
 
   it("append-only incremental: inserta solo las nuevas", async () => {
     seed();
-    const first = await adapter.sync(db, srcDb);
+    const first = await adapter.sync(db);
     expect(first.eventsInserted).toBe(2);
-    const second = await adapter.sync(db, srcDb);
+    const second = await adapter.sync(db);
     expect(second.eventsInserted).toBe(0); // reingesta incremental
     const rows = db.prepare("SELECT id, agent FROM sessions WHERE agent = 'grok'").all();
     expect(rows).toHaveLength(1);
@@ -144,14 +144,102 @@ describe("grok — sync append-only (schema del plan, fixture-driven)", () => {
   it("fila sin timestamp => skipped", async () => {
     seed();
     srcDb.exec("INSERT INTO usage_events (session_id, model, input_tokens, output_tokens, total_tokens) VALUES ('g-1', 'grok-5', 1, 1, 2)");
-    const res = await adapter.sync(db, srcDb);
+    const res = await adapter.sync(db);
     expect(res.skipped).toBe(1);
     expect(res.eventsInserted).toBe(2);
   });
-  it("los micros del proveedor no se usan: costo por pricing (0 con modelo desconocido)", () => {
+  it("los micros del proveedor no se usan: costo por pricing (0 con modelo desconocido)", async () => {
     seed();
-    void adapter.sync(db, srcDb);
+    await adapter.sync(db);
     const ev = db.prepare("SELECT cost_usd FROM usage_events WHERE dedup_key LIKE 'grok::g-1::%' LIMIT 1").get() as { cost_usd: number };
     expect(ev.cost_usd).toBe(0); // grok-5 no está en pricing => 0 + unknown (equiv-API, nunca micros)
+  });
+});
+
+// ── A3: Goose (acumulativo tolerante), Amp (JSON threads), Crush (cost-only) ─
+import { gooseSyncAdapter } from "../src/adapters/goose.js";
+import { ampSyncAdapter } from "../src/adapters/amp.js";
+import { crushSyncAdapter } from "../src/adapters/crush.js";
+
+describe("goose — acumulativo con columnas tolerantes", () => {
+  let db: DB;
+  let srcDbPath: string;
+  beforeEach(() => {
+    db = openDb(join(tmp, "motor-goose.db"));
+    srcDbPath = join(tmp, "goose.db");
+    const src = new Database(srcDbPath);
+    // variante accumulated_* (la otra cubre input/output_tokens, igual que opencode)
+    src.exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, accumulated_input_tokens INT, accumulated_output_tokens INT, model TEXT, updated_at INT)`);
+    src.prepare("INSERT INTO sessions (id, accumulated_input_tokens, accumulated_output_tokens, model, updated_at) VALUES ('gs-1', 500, 100, 'goose-4', ?)").run(Date.now() - 60_000);
+    src.close();
+  });
+  it("lee accumulated_* cuando input/output no existen; idempotente al re-sync", async () => {
+    const adapter = gooseSyncAdapter(srcDbPath);
+    const first = await adapter.sync(db);
+    expect(first.eventsInserted).toBe(1);
+    const ev = db.prepare("SELECT input_tokens, output_tokens, model FROM usage_events WHERE dedup_key = 'goose::gs-1'").get() as Record<string, number | string>;
+    expect(ev).toMatchObject({ input_tokens: 500, output_tokens: 100, model: "goose-4" });
+    const second = await adapter.sync(db);
+    expect(second.eventsInserted).toBe(0);
+  });
+});
+
+describe("amp — threads JSON con reemplazo", () => {
+  let db: DB;
+  let threads: string;
+  beforeEach(() => {
+    db = openDb(join(tmp, "motor-amp.db"));
+    threads = join(tmp, "threads");
+    mkdirSync(threads, { recursive: true });
+    writeFileSync(join(threads, "T-abc123.json"), JSON.stringify({
+      usage: { inputTokens: 3000, outputTokens: 400, cacheReadInputTokens: 2500, cacheCreationInputTokens: 60, credits: 12 },
+      model: "amp-model",
+      updatedAt: Date.now() - 30_000,
+    }));
+  });
+  it("agregado por thread con cache camelCase; credits ignorados; idempotente", async () => {
+    const adapter = ampSyncAdapter(threads);
+    const first = await adapter.sync(db);
+    expect(first.eventsInserted).toBe(1);
+    const ev = db.prepare("SELECT input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_usd, model FROM usage_events WHERE dedup_key = 'amp::T-abc123'").get() as Record<string, number | string>;
+    expect(ev).toMatchObject({ input_tokens: 3000, output_tokens: 400, cache_read_tokens: 2500, cache_write_tokens: 60, model: "amp-model" });
+    expect(ev.cost_usd).toBe(0); // credits del proveedor NO usados
+    expect((await adapter.sync(db)).eventsInserted).toBe(0);
+  });
+  it("thread que crece reemplaza sin duplicar", async () => {
+    const adapter = ampSyncAdapter(threads);
+    await adapter.sync(db);
+    writeFileSync(join(threads, "T-abc123.json"), JSON.stringify({
+      usage: { inputTokens: 5000, outputTokens: 600, cacheReadInputTokens: 4000, cacheCreationInputTokens: 80 },
+      model: "amp-model",
+      updatedAt: Date.now(),
+    }));
+    const res = await adapter.sync(db);
+    expect(res.eventsInserted).toBe(1);
+    const n = (db.prepare("SELECT COUNT(*) AS n FROM usage_events WHERE dedup_key LIKE 'amp::T-abc123%'").get() as { n: number }).n;
+    expect(n).toBe(1);
+    const ev = db.prepare("SELECT input_tokens FROM usage_events WHERE dedup_key = 'amp::T-abc123'").get() as { input_tokens: number };
+    expect(ev.input_tokens).toBe(5000);
+  });
+});
+
+describe("crush — cost-only (excepción documentada)", () => {
+  let db: DB;
+  let srcDbPath: string;
+  beforeEach(() => {
+    db = openDb(join(tmp, "motor-crush.db"));
+    srcDbPath = join(tmp, "crush.db");
+    const src = new Database(srcDbPath);
+    src.exec(`CREATE TABLE sessions (id TEXT PRIMARY KEY, cost REAL, model TEXT, created_at INT)`);
+    src.prepare("INSERT INTO sessions (id, cost, model, created_at) VALUES ('cr-1', 1.25, 'crush-model', ?)").run(Date.now() - 90_000);
+    src.close();
+  });
+  it("costo directo del proveedor con tokens 0; idempotente", async () => {
+    const adapter = crushSyncAdapter(srcDbPath);
+    const first = await adapter.sync(db);
+    expect(first.eventsInserted).toBe(1);
+    const ev = db.prepare("SELECT input_tokens, output_tokens, cost_usd FROM usage_events WHERE dedup_key = 'crush::cr-1'").get() as Record<string, number>;
+    expect(ev).toMatchObject({ input_tokens: 0, output_tokens: 0, cost_usd: 1.25 });
+    expect((await adapter.sync(db)).eventsInserted).toBe(0);
   });
 });

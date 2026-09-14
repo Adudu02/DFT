@@ -7,8 +7,7 @@
  * Fuentes = SOLO LECTURA (readFileRO + stat). Escritura solo en ./data.
  */
 import { stat } from "node:fs/promises";
-import { getIngestAdapters, getDbSyncAdapters, type IngestAdapter } from "./adapters/registry.js";
-import { withSqliteSnapshot } from "./lib/sqlite-snapshot.js";
+import { getIngestAdapters, getSyncAdapters, type IngestAdapter } from "./adapters/registry.js";
 import type { DB } from "./lib/db.js";
 import { readFileRO } from "./lib/fs-readonly.js";
 import { costForEvent } from "./lib/cost.js";
@@ -148,12 +147,12 @@ async function ingestFile(
 /** Ingesta todos los transcripts descubiertos (todos los adapters) hacia `db`. */
 export async function ingestAll(
   db: DB,
-  opts: { projectsRoot?: string; codexRoot?: string; qwenRoot?: string; zcodeRoot?: string; geminiRoot?: string; opencodeRoot?: string; grokRoot?: string; pricing?: Pricing; staleDays?: number; timeZone?: string; reparseSkills?: boolean } = {},
+  opts: { projectsRoot?: string; codexRoot?: string; qwenRoot?: string; zcodeRoot?: string; geminiRoot?: string; opencodeRoot?: string; grokRoot?: string; gooseRoot?: string; ampRoot?: string; crushRoot?: string; pricing?: Pricing; staleDays?: number; timeZone?: string; reparseSkills?: boolean } = {},
 ): Promise<IngestSummary> {
   const pricing = opts.pricing ?? (await loadPricing());
   const unknown = new UnknownModels();
   const adapters = getIngestAdapters({ claudeRoot: opts.projectsRoot, codexRoot: opts.codexRoot, qwenRoot: opts.qwenRoot, zcodeRoot: opts.zcodeRoot, geminiRoot: opts.geminiRoot });
-  const dbSync = getDbSyncAdapters({ opencodeRoot: opts.opencodeRoot, grokRoot: opts.grokRoot, claudeRoot: opts.projectsRoot });
+  const syncAdapters = getSyncAdapters({ claudeRoot: opts.projectsRoot, opencodeRoot: opts.opencodeRoot, grokRoot: opts.grokRoot, gooseRoot: opts.gooseRoot, ampRoot: opts.ampRoot, crushRoot: opts.crushRoot });
 
   let files = 0;
   let eventsInserted = 0;
@@ -175,11 +174,11 @@ export async function ingestAll(
     }
   }
 
-  // Fuentes SQLite (A2): snapshot RO + sync por adapter. Un fallo degrada sin
-  // abortar la ingesta de los demás.
-  for (const dba of dbSync) {
+  // Fuentes de sincronización (A2/A3): cada adapter es dueño de su fuente
+  // (snapshot SQLite, directorio JSON). Un fallo degrada sin abortar el resto.
+  for (const sa of syncAdapters) {
     try {
-      const res = await withSqliteSnapshot(dba.sourcePath, (snapshotDb) => dba.sync(db, snapshotDb));
+      const res = await sa.sync(db);
       eventsInserted += res.eventsInserted;
       if (res.eventsInserted > 0) filesChanged++;
       files += 1;

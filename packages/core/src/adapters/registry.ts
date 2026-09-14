@@ -43,8 +43,11 @@ import {
   deriveGeminiIds,
   parseGeminiSkills,
 } from "./gemini.js";
-import { opencodeDbSyncAdapter } from "./opencode.js";
-import { grokDbSyncAdapter } from "./grok.js";
+import { opencodeSyncAdapter } from "./opencode.js";
+import { grokSyncAdapter } from "./grok.js";
+import { gooseSyncAdapter } from "./goose.js";
+import { ampSyncAdapter } from "./amp.js";
+import { crushSyncAdapter } from "./crush.js";
 
 export interface IngestAdapter {
   id: string;
@@ -166,20 +169,28 @@ export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: stri
  * (lib/sqlite-snapshot.ts) y sincroniza filas él mismo (semántica por tipo de
  * fila: acumulativa vs append-only).
  */
-export interface DbSyncAdapter {
+export interface SyncAdapter {
   id: string;
-  /** Path de la DB fuente (read-only para el motor). */
-  sourcePath: string;
-  /** Sincroniza filas del snapshot hacia `target`. Conteo honesto de escrituras. */
-  sync(target: import("../lib/db.js").DB, snapshotDb: import("better-sqlite3").Database): Promise<{ eventsInserted: number; skipped: number }>;
+  /** Sincroniza su fuente (de la que es dueño: snapshot SQLite, directorio JSON…) hacia `target`. Conteo honesto de escrituras. */
+  sync(target: import("../lib/db.js").DB): Promise<{ eventsInserted: number; skipped: number }>;
 }
 
-export function getDbSyncAdapters(roots: { claudeRoot?: string; opencodeRoot?: string; grokRoot?: string } = {}): DbSyncAdapter[] {
-  const out: DbSyncAdapter[] = [];
-  const opencodeRoot = roots.opencodeRoot ?? (roots.claudeRoot ? undefined : homePath(".local", "share", "opencode", "opencode.db"));
-  if (opencodeRoot) out.push(opencodeDbSyncAdapter(opencodeRoot));
-  const grokRoot = roots.grokRoot ?? (roots.claudeRoot ? undefined : homePath(".grok", "grok.db"));
-  if (grokRoot) out.push(grokDbSyncAdapter(grokRoot));
+export function getSyncAdapters(
+  roots: { claudeRoot?: string; opencodeRoot?: string; grokRoot?: string; gooseRoot?: string; ampRoot?: string; crushRoot?: string } = {},
+): SyncAdapter[] {
+  const out: SyncAdapter[] = [];
+  const pick = (v: string | undefined, ...parts: string[]): string | undefined =>
+    v ?? (roots.claudeRoot ? undefined : homePath(...parts));
+  const opencodeRoot = pick(roots.opencodeRoot, ".local", "share", "opencode", "opencode.db");
+  if (opencodeRoot) out.push(opencodeSyncAdapter(opencodeRoot));
+  const grokRoot = pick(roots.grokRoot, ".grok", "grok.db");
+  if (grokRoot) out.push(grokSyncAdapter(grokRoot));
+  const gooseRoot = pick(roots.gooseRoot, ".local", "share", "goose", "sessions", "sessions.db");
+  if (gooseRoot) out.push(gooseSyncAdapter(gooseRoot));
+  const ampRoot = pick(roots.ampRoot, ".local", "share", "amp", "threads");
+  if (ampRoot) out.push(ampSyncAdapter(ampRoot));
+  const crushRoot = pick(roots.crushRoot, ".local", "share", "crush", "crush.db");
+  if (crushRoot) out.push(crushSyncAdapter(crushRoot));
   return out;
 }
 
@@ -193,13 +204,29 @@ export function getDbSyncAdapters(roots: { claudeRoot?: string; opencodeRoot?: s
  */
 export function rootsFromConfig(
   agentPaths: Record<string, string> = {},
-): { projectsRoot?: string; codexRoot: string; qwenRoot: string; zcodeRoot: string; geminiRoot: string } {
+): {
+  projectsRoot?: string;
+  codexRoot: string;
+  qwenRoot: string;
+  zcodeRoot: string;
+  geminiRoot: string;
+  opencodeRoot: string;
+  grokRoot: string;
+  gooseRoot: string;
+  ampRoot: string;
+  crushRoot: string;
+} {
   return {
     projectsRoot: expandTilde(agentPaths["claude-code"]) || undefined,
     codexRoot: expandTilde(agentPaths.codex) || defaultCodexRoot(),
     qwenRoot: expandTilde(agentPaths.qwen) || defaultQwenRoot(),
     zcodeRoot: expandTilde(agentPaths.zcode) || defaultZcodeRoot(),
     geminiRoot: expandTilde(agentPaths.gemini) || defaultGeminiRoot(),
+    opencodeRoot: expandTilde(agentPaths.opencode) || homePath(".local", "share", "opencode", "opencode.db"),
+    grokRoot: expandTilde(agentPaths.grok) || homePath(".grok", "grok.db"),
+    gooseRoot: expandTilde(agentPaths.goose) || homePath(".local", "share", "goose", "sessions", "sessions.db"),
+    ampRoot: expandTilde(agentPaths.amp) || homePath(".local", "share", "amp", "threads"),
+    crushRoot: expandTilde(agentPaths.crush) || homePath(".local", "share", "crush", "crush.db"),
   };
 }
 

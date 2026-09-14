@@ -10,15 +10,20 @@
  * cambiaron, 0 escrituras; si cambiaron, DELETE + INSERT (nunca doble conteo).
  * El `cost` propio de OpenCode se ignora: equiv-API de pricing.json.
  */
-import type Database from "better-sqlite3";
 import type { DB } from "../lib/db.js";
+import { withSqliteSnapshot } from "../lib/sqlite-snapshot.js";
 import { toIsoTimestamp } from "../lib/time.js";
 
-export function opencodeDbSyncAdapter(sourcePath: string) {
+export function opencodeSyncAdapter(sourcePath: string) {
   return {
     id: "opencode",
-    sourcePath,
-    async sync(target: DB, snapshotDb: Database.Database): Promise<{ eventsInserted: number; skipped: number }> {
+    async sync(target: DB): Promise<{ eventsInserted: number; skipped: number }> {
+      return withSqliteSnapshot(sourcePath, (snapshotDb) => doSync(target, sourcePath, snapshotDb));
+    },
+  };
+}
+
+async function doSync(target: DB, sourcePath: string, snapshotDb: import("better-sqlite3").Database): Promise<{ eventsInserted: number; skipped: number }> {
       const rows = snapshotDb.prepare("SELECT * FROM session").all() as Record<string, any>[];
       const upsertSession = target.prepare(`
         INSERT INTO sessions (id, agent, project, started_at, ended_at, turns, source_path)
@@ -84,8 +89,6 @@ export function opencodeDbSyncAdapter(sourcePath: string) {
         eventsInserted++;
       }
       return { eventsInserted, skipped };
-    },
-  };
 }
 
 function projectOf(directory: unknown): string {
