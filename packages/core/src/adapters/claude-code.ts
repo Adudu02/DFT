@@ -11,15 +11,10 @@ import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { readFileRO, readDirRO } from "../lib/fs-readonly.js";
-import type { NormalizedSession, SkillUsage, UsageEvent } from "./types.js";
+import type { NormalizedSession, ParsedLine, SkillUsage, UsageEvent } from "./types.js";
 
 export function defaultProjectsRoot(): string {
   return join(homedir(), ".claude", "projects");
-}
-
-interface ParsedLine {
-  dedupKey: string;
-  event: UsageEvent;
 }
 
 function splitLines(raw: string): string[] {

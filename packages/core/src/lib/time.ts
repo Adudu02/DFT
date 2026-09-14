@@ -16,3 +16,19 @@ export function dayInTz(ts: string, timeZone?: string): string {
     return ts.slice(0, 10); // timeZone inválida en config
   }
 }
+
+/**
+ * Normaliza un timestamp de fuente heterogénea a ISO 8601: acepta epoch-ms,
+ * epoch-s (heurística >1e12 = ms) o string parseable. null si no es interpretable
+ * (la línea/fila se cuenta como skipped, nunca se inventa fecha).
+ */
+export function toIsoTimestamp(value: unknown): string | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const ms = value > 1e12 ? value : value * 1000;
+    return new Date(ms).toISOString();
+  }
+  if (typeof value === "string" && value && !Number.isNaN(Date.parse(value))) {
+    return new Date(value).toISOString();
+  }
+  return null;
+}

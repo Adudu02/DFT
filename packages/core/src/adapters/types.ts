@@ -11,6 +11,12 @@ export interface UsageEvent {
   cacheRead: number; // cache_read_input_tokens
 }
 
+/** Línea parseada de cualquier adapter de archivo: identidad + evento normalizado. */
+export interface ParsedLine {
+  dedupKey: string;
+  event: UsageEvent;
+}
+
 export interface NormalizedSession {
   id: string;
   agent: string; // "claude-code", "codex", ...

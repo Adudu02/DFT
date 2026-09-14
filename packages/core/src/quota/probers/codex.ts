@@ -5,8 +5,8 @@
  * descubiertos (origin offline-stale, gratis y sin credencial). Endpoint no
  * documentado — parser protegido por fixtures.
  */
-import { join } from "node:path";
 import { readFileRO } from "../../lib/fs-readonly.js";
+import { homePath } from "../../lib/paths.js";
 import { discoverCodexSessions } from "../../adapters/codex.js";
 import type { ProberContext, QuotaSnapshot } from "../types.js";
 
@@ -110,7 +110,7 @@ export async function probeCodex(ctx: ProberContext): Promise<QuotaSnapshot[]> {
   let token: string | undefined;
   let accountId: string | undefined;
   try {
-    const raw = await readFileRO(ctx.codexAuthPath ?? joinHome(".codex", "auth.json"));
+    const raw = await readFileRO(ctx.codexAuthPath ?? homePath(".codex", "auth.json"));
     const auth = JSON.parse(raw);
     token = auth?.tokens?.access_token;
     accountId = auth?.tokens?.account_id ?? auth?.tokens?.chatgpt_account_id;
@@ -137,6 +137,3 @@ export async function probeCodex(ctx: ProberContext): Promise<QuotaSnapshot[]> {
   throw new Error(token ? `HTTP error en ${USAGE_URL} y sin rollouts offline` : "sin credencial de Codex ni rollouts offline");
 }
 
-function joinHome(...parts: string[]): string {
-  return join(process.env.HOME ?? "", ...parts);
-}

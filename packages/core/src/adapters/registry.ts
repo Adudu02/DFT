@@ -4,8 +4,10 @@
  * modelo normalizado. La ingesta itera todos y comparte el offset por archivo.
  */
 import { homedir } from "node:os";
+import { homePath } from "../lib/paths.js";
 import { basename, dirname, join } from "node:path";
-import type { SkillUsage, UsageEvent } from "./types.js";
+import type { ParsedLine, SkillUsage } from "./types.js";
+export type { ParsedLine };
 import {
   ClaudeCodeAdapter,
   defaultProjectsRoot,
@@ -43,11 +45,6 @@ import {
 } from "./gemini.js";
 import { opencodeDbSyncAdapter } from "./opencode.js";
 import { grokDbSyncAdapter } from "./grok.js";
-
-export interface ParsedLine {
-  dedupKey: string;
-  event: UsageEvent;
-}
 
 export interface IngestAdapter {
   id: string;
@@ -179,16 +176,13 @@ export interface DbSyncAdapter {
 
 export function getDbSyncAdapters(roots: { claudeRoot?: string; opencodeRoot?: string; grokRoot?: string } = {}): DbSyncAdapter[] {
   const out: DbSyncAdapter[] = [];
-  const opencodeRoot = roots.opencodeRoot ?? (roots.claudeRoot ? undefined : joinHome(".local", "share", "opencode", "opencode.db"));
+  const opencodeRoot = roots.opencodeRoot ?? (roots.claudeRoot ? undefined : homePath(".local", "share", "opencode", "opencode.db"));
   if (opencodeRoot) out.push(opencodeDbSyncAdapter(opencodeRoot));
-  const grokRoot = roots.grokRoot ?? (roots.claudeRoot ? undefined : joinHome(".grok", "grok.db"));
+  const grokRoot = roots.grokRoot ?? (roots.claudeRoot ? undefined : homePath(".grok", "grok.db"));
   if (grokRoot) out.push(grokDbSyncAdapter(grokRoot));
   return out;
 }
 
-function joinHome(...parts: string[]): string {
-  return join(homedir(), ...parts);
-}
 
 /**
  * Traduce `config.agentPaths` (rutas que el usuario configura para conectar sus

@@ -21,15 +21,10 @@ import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { readDirRO } from "../lib/fs-readonly.js";
-import type { SkillUsage, UsageEvent } from "./types.js";
+import type { ParsedLine, SkillUsage } from "./types.js";
 
 export function defaultZcodeRoot(): string {
   return join(homedir(), ".zcode", "cli", "rollout");
-}
-
-interface ParsedLine {
-  dedupKey: string;
-  event: UsageEvent;
 }
 
 /** Sesión desde el filename: `model-io-sess_<uuid>.jsonl` → `sess_<uuid>`. */

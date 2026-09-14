@@ -19,15 +19,10 @@ import type { Dirent } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join } from "node:path";
 import { readDirRO, readFileRO } from "../lib/fs-readonly.js";
-import type { SkillUsage, UsageEvent } from "./types.js";
+import type { ParsedLine, SkillUsage, UsageEvent } from "./types.js";
 
 export function defaultCodexRoot(): string {
   return join(homedir(), ".codex");
-}
-
-interface ParsedLine {
-  dedupKey: string;
-  event: UsageEvent;
 }
 
 function splitLines(raw: string): string[] {

@@ -13,6 +13,11 @@ import { fileURLToPath } from "node:url";
 // el path explícito a openDb/loadPricing/loadConfig (ya lo aceptan) en vez de esto.
 let dataRoot: string | null = null;
 
+/** Ruta bajo el HOME del usuario (~): la fuente canónica de defaults de agentes. */
+export function homePath(...parts: string[]): string {
+  return join(process.env.HOME ?? "", ...parts);
+}
+
 /** Estado escribible del motor (default `<cwd>/data`, override con setDataDir). */
 export function dataDir(): string {
   return dataRoot ?? join(process.cwd(), "data");
