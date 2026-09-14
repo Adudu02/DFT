@@ -183,3 +183,61 @@ describe("sanitización — credenciales fuera de resultados", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 });
+
+// ── Fase 2: Gemini, Copilot, OpenRouter (fixture-driven) ────────────────────
+import { parseGeminiQuota } from "../src/quota/probers/gemini.js";
+import { parseCopilotUser } from "../src/quota/probers/copilot.js";
+import { parseOpenRouterKey } from "../src/quota/probers/openrouter.js";
+
+describe("parseGeminiQuota — buckets por modelId, sin agregación", () => {
+  it("un snapshot por modelId con usedPercent derivado de la fracción", () => {
+    const snaps = parseGeminiQuota(
+      {
+        buckets: [
+          { modelId: "gemini-3-pro", remainingAmount: 800, remainingFraction: 0.8, resetTime: "2026-09-20T00:00:00Z" },
+          { modelId: "gemini-3-flash", remainingAmount: 50, remainingFraction: 0.25 },
+        ],
+      },
+      NOW,
+    );
+    expect(snaps).toHaveLength(2);
+    expect(snaps[0]).toMatchObject({ provider: "gemini", model: "gemini-3-pro", usedPercent: 20, limit: 1000, remaining: 800 });
+    expect(snaps[1]).toMatchObject({ model: "gemini-3-flash", usedPercent: 75, limit: 200 });
+  });
+  it("fracción inválida o ausente => fila omitida", () => {
+    expect(parseGeminiQuota({ buckets: [{ modelId: "x" }, { modelId: "y", remainingFraction: 0 }, { modelId: "z", remainingFraction: 1.5 }] }, NOW)).toEqual([]);
+  });
+});
+
+describe("parseCopilotUser — percent_remaining es RESTANTE", () => {
+  it("se invierte a usado; unlimited se omite; reset y plan compartidos", () => {
+    const snaps = parseCopilotUser(
+      {
+        copilot_plan: "pro",
+        quota_reset_date: "2026-10-01",
+        quota_snapshots: {
+          chat: { percent_remaining: 80, remaining: null, unlimited: false },
+          premium_interactions: { percent_remaining: 5, remaining: 2, unlimited: false },
+          completions: { unlimited: true },
+        },
+      },
+      NOW,
+    );
+    expect(snaps).toHaveLength(2); // unlimited fuera
+    expect(snaps[0]).toMatchObject({ model: "chat", usedPercent: 20, window: "monthly", plan: "pro", resetsAt: "2026-10-01" });
+    expect(snaps[1]).toMatchObject({ model: "premium_interactions", usedPercent: 95, remaining: 2 });
+  });
+});
+
+describe("parseOpenRouterKey — crédito key-level", () => {
+  it("porcentaje de crédito usado con tope 100", () => {
+    const snaps = parseOpenRouterKey({ data: { usage: 3, limit: 10, limit_remaining: 7, is_free_tier: false } }, NOW);
+    expect(snaps).toHaveLength(1);
+    expect(snaps[0]).toMatchObject({ provider: "openrouter", window: "credit", usedPercent: 30, limit: 10, remaining: 7 });
+    expect(parseOpenRouterKey({ data: { usage: 99, limit: 10 } }, NOW)[0].usedPercent).toBe(100);
+  });
+  it("limit ausente/0 => vacío", () => {
+    expect(parseOpenRouterKey({ data: { usage: 1 } }, NOW)).toEqual([]);
+    expect(parseOpenRouterKey({ data: { usage: 1, limit: 0 } }, NOW)).toEqual([]);
+  });
+});

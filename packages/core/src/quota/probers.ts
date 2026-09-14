@@ -7,11 +7,22 @@ import type { ProberContext, QuotaProviderResult, QuotaSnapshot } from "./types.
 import { probeClaude } from "./probers/claude.js";
 import { probeCodex } from "./probers/codex.js";
 import { probeZai } from "./probers/zai.js";
+import { probeGemini } from "./probers/gemini.js";
+import { probeCopilot } from "./probers/copilot.js";
+import { probeOpenRouter } from "./probers/openrouter.js";
 
 export type QuotaProber = (ctx: ProberContext) => Promise<QuotaSnapshot[]>;
 export type QuotaProbers = Record<string, QuotaProber>;
 
-export const PHASE1_PROBERS: QuotaProbers = { claude: probeClaude, codex: probeCodex, zai: probeZai };
+/** Todos los probers (F1: claude/codex/zai · F2: gemini/copilot/openrouter). */
+export const ALL_PROBERS: QuotaProbers = {
+  claude: probeClaude,
+  codex: probeCodex,
+  zai: probeZai,
+  gemini: probeGemini,
+  copilot: probeCopilot,
+  openrouter: probeOpenRouter,
+};
 
 function withTimeout(prober: QuotaProber, ctx: ProberContext): Promise<QuotaSnapshot[]> {
   return Promise.race([

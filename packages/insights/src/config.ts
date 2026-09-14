@@ -19,8 +19,9 @@ export interface Config {
   waste: WasteThresholds;
   pricing: { maxAgeDays: number; autoUpdate: boolean };
   quota: {
-    providers: { claude: boolean; codex: boolean; zai: boolean };
+    providers: { claude: boolean; codex: boolean; zai: boolean; gemini: boolean; copilot: boolean; openrouter: boolean };
     zaiApiKey?: string;
+    geminiProjectId?: string;
     refreshTtlMinutes: number;
     autoRefresh: boolean;
   };
@@ -36,7 +37,7 @@ export const DEFAULT_CONFIG: Config = {
   waste: { ...DEFAULT_WASTE },
   pricing: { maxAgeDays: 7, autoUpdate: true },
   quota: {
-    providers: { claude: true, codex: true, zai: true },
+    providers: { claude: true, codex: true, zai: true, gemini: true, copilot: true, openrouter: true },
     refreshTtlMinutes: 5,
     autoRefresh: false,
   },
@@ -100,17 +101,18 @@ export function validateConfig(value: unknown): Partial<Config> {
     if (!isRecord(value.quota)) throw new Error("config inválida: quota");
     const q = value.quota;
     for (const key of Object.keys(q)) {
-      if (key !== "providers" && key !== "zaiApiKey" && key !== "refreshTtlMinutes" && key !== "autoRefresh") {
+      if (key !== "providers" && key !== "zaiApiKey" && key !== "geminiProjectId" && key !== "refreshTtlMinutes" && key !== "autoRefresh") {
         throw new Error(`config inválida: quota.${key}`);
       }
     }
     if (q.zaiApiKey !== undefined && typeof q.zaiApiKey !== "string") throw new Error("config inválida: quota.zaiApiKey");
+    if (q.geminiProjectId !== undefined && typeof q.geminiProjectId !== "string") throw new Error("config inválida: quota.geminiProjectId");
     if (q.refreshTtlMinutes !== undefined) nonNegative(q.refreshTtlMinutes, "quota.refreshTtlMinutes", true);
     if (q.autoRefresh !== undefined && typeof q.autoRefresh !== "boolean") throw new Error("config inválida: quota.autoRefresh");
     if (q.providers !== undefined) {
       if (!isRecord(q.providers)) throw new Error("config inválida: quota.providers");
       for (const [provider, enabled] of Object.entries(q.providers)) {
-        if (!["claude", "codex", "zai"].includes(provider)) throw new Error(`config inválida: quota.providers.${provider}`);
+        if (!["claude", "codex", "zai", "gemini", "copilot", "openrouter"].includes(provider)) throw new Error(`config inválida: quota.providers.${provider}`);
         if (typeof enabled !== "boolean") throw new Error(`config inválida: quota.providers.${provider}`);
       }
     }

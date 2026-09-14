@@ -48,4 +48,8 @@ export interface ProberContext {
   codexAuthPath?: string;
   codexRoot?: string; // rollouts para el fallback offline
   zaiApiKey?: string;
+  geminiCredentialsPath?: string;
+  geminiProjectId?: string;
+  copilotAppsPath?: string;
+  openrouterApiKey?: string;
 }

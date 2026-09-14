@@ -22,6 +22,19 @@ describe("config — bloque pricing", () => {
   });
 });
 
+describe("config quota — proveedores Fase 2", () => {
+  it("defaults: gemini/copilot/openrouter habilitados; geminiProjectId opcional", () => {
+    expect(DEFAULT_CONFIG.quota.providers).toEqual({ claude: true, codex: true, zai: true, gemini: true, copilot: true, openrouter: true });
+    expect(DEFAULT_CONFIG.quota.geminiProjectId).toBeUndefined();
+  });
+  it("valida los tres proveedores nuevos y rechaza desconocidos", () => {
+    expect(() => validateConfig({ quota: { providers: { gemini: false, copilot: false, openrouter: false } } })).not.toThrow();
+    expect(() => validateConfig({ quota: { providers: {Cursor: true} as never } })).toThrowError(/quota.providers/);
+    expect(() => validateConfig({ quota: { geminiProjectId: "mi-proyecto" } })).not.toThrow();
+    expect(() => validateConfig({ quota: { geminiProjectId: 42 } })).toThrowError(/geminiProjectId/);
+  });
+});
+
 describe("autoPricingCheck — best-effort, una vez por sesión", () => {
   let tmp: string;
   let pricingPath: string;
