@@ -17,6 +17,7 @@ import { Panel } from "../components/Panel.js";
 import { Loading } from "../components/Loading.js";
 import { ErrorMsg } from "../components/ErrorMsg.js";
 import { Empty } from "../components/Empty.js";
+import { QuotaSection } from "../components/QuotaSection.js";
 
 export function Inicio() {
   const { data, error } = useApi<Summary>("/api/summary");
@@ -32,6 +33,7 @@ export function Inicio() {
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
+      <QuotaSection />
       <Panel className="md:col-span-2">
         <div className="flex items-center justify-between mb-1">
           <span className="text-term-muted text-xs uppercase tracking-widest">

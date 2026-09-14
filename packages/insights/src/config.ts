@@ -18,6 +18,12 @@ export interface Config {
   timeZone: string; // IANA, ej. "America/Merida". Vacío = zona del sistema.
   waste: WasteThresholds;
   pricing: { maxAgeDays: number; autoUpdate: boolean };
+  quota: {
+    providers: { claude: boolean; codex: boolean; zai: boolean };
+    zaiApiKey?: string;
+    refreshTtlMinutes: number;
+    autoRefresh: boolean;
+  };
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -29,6 +35,11 @@ export const DEFAULT_CONFIG: Config = {
   timeZone: "",
   waste: { ...DEFAULT_WASTE },
   pricing: { maxAgeDays: 7, autoUpdate: true },
+  quota: {
+    providers: { claude: true, codex: true, zai: true },
+    refreshTtlMinutes: 5,
+    autoRefresh: false,
+  },
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -44,7 +55,7 @@ function nonNegative(value: unknown, field: string, integer = false): void {
 /** Valida únicamente las claves recibidas, para preservar PUTs parciales. */
 export function validateConfig(value: unknown): Partial<Config> {
   if (!isRecord(value)) throw new Error("config inválida: se esperaba un objeto");
-  const allowed = new Set(["hourlyRate", "staleDays", "minutesPerUseDefault", "minutesPerUse", "agentPaths", "timeZone", "waste", "pricing"]);
+  const allowed = new Set(["hourlyRate", "staleDays", "minutesPerUseDefault", "minutesPerUse", "agentPaths", "timeZone", "waste", "pricing", "quota"]);
   for (const key of Object.keys(value)) if (!allowed.has(key)) throw new Error(`config inválida: clave desconocida '${key}'`);
   if (value.hourlyRate !== undefined) nonNegative(value.hourlyRate, "hourlyRate");
   if (value.staleDays !== undefined) nonNegative(value.staleDays, "staleDays", true);
@@ -85,6 +96,25 @@ export function validateConfig(value: unknown): Partial<Config> {
     if (p.maxAgeDays !== undefined) nonNegative(p.maxAgeDays, "pricing.maxAgeDays", true);
     if (p.autoUpdate !== undefined && typeof p.autoUpdate !== "boolean") throw new Error("config inválida: pricing.autoUpdate debe ser booleano");
   }
+  if (value.quota !== undefined) {
+    if (!isRecord(value.quota)) throw new Error("config inválida: quota");
+    const q = value.quota;
+    for (const key of Object.keys(q)) {
+      if (key !== "providers" && key !== "zaiApiKey" && key !== "refreshTtlMinutes" && key !== "autoRefresh") {
+        throw new Error(`config inválida: quota.${key}`);
+      }
+    }
+    if (q.zaiApiKey !== undefined && typeof q.zaiApiKey !== "string") throw new Error("config inválida: quota.zaiApiKey");
+    if (q.refreshTtlMinutes !== undefined) nonNegative(q.refreshTtlMinutes, "quota.refreshTtlMinutes", true);
+    if (q.autoRefresh !== undefined && typeof q.autoRefresh !== "boolean") throw new Error("config inválida: quota.autoRefresh");
+    if (q.providers !== undefined) {
+      if (!isRecord(q.providers)) throw new Error("config inválida: quota.providers");
+      for (const [provider, enabled] of Object.entries(q.providers)) {
+        if (!["claude", "codex", "zai"].includes(provider)) throw new Error(`config inválida: quota.providers.${provider}`);
+        if (typeof enabled !== "boolean") throw new Error(`config inválida: quota.providers.${provider}`);
+      }
+    }
+  }
   return value as Partial<Config>;
 }
 
@@ -100,6 +130,11 @@ function merge(partial: Partial<Config>): Config {
     agentPaths: { ...DEFAULT_CONFIG.agentPaths, ...(partial.agentPaths ?? {}) },
     waste: { ...DEFAULT_WASTE, ...(partial.waste ?? {}) },
     pricing: { ...DEFAULT_CONFIG.pricing, ...(partial.pricing ?? {}) },
+    quota: {
+      ...DEFAULT_CONFIG.quota,
+      ...(partial.quota ?? {}),
+      providers: { ...DEFAULT_CONFIG.quota.providers, ...(partial.quota?.providers ?? {}) },
+    },
   };
 }
 
