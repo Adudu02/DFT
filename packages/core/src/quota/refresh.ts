@@ -4,12 +4,16 @@
  * Todo inyectable para tests sin red.
  */
 import { mergeCache, readQuotaCache, writeQuotaCache } from "./cache.js";
-import { runQuotaProbers, PHASE1_PROBERS, type QuotaProbers } from "./probers.js";
+import { runQuotaProbers, ALL_PROBERS, type QuotaProbers } from "./probers.js";
 import type { QuotaCacheFile, QuotaProviderResult } from "./types.js";
 
 export interface RefreshQuotaOptions {
   providers?: Record<string, boolean>;
   zaiApiKey?: string;
+  geminiProjectId?: string;
+  openrouterApiKey?: string;
+  geminiCredentialsPath?: string;
+  copilotAppsPath?: string;
   codexRoot?: string;
   claudeCredentialsPath?: string;
   codexAuthPath?: string;
@@ -25,9 +29,9 @@ export async function refreshQuota(
 ): Promise<{ cache: QuotaCacheFile; results: QuotaProviderResult[] }> {
   const now = opts.now ?? ((): Date => new Date());
   const results = await runQuotaProbers(
-    opts.probers ?? PHASE1_PROBERS,
+    opts.probers ?? ALL_PROBERS,
     opts.providers ?? {},
-    { claudeCredentialsPath: opts.claudeCredentialsPath, codexAuthPath: opts.codexAuthPath, codexRoot: opts.codexRoot, zaiApiKey: opts.zaiApiKey },
+    { claudeCredentialsPath: opts.claudeCredentialsPath, codexAuthPath: opts.codexAuthPath, codexRoot: opts.codexRoot, zaiApiKey: opts.zaiApiKey, geminiProjectId: opts.geminiProjectId, geminiCredentialsPath: opts.geminiCredentialsPath, copilotAppsPath: opts.copilotAppsPath, openrouterApiKey: opts.openrouterApiKey },
     { fetchImpl: opts.fetchImpl, now: () => now(), timeoutMs: opts.timeoutMs },
   );
   const cache = mergeCache(readQuotaCache(opts.cachePath), now().toISOString(), results.filter((r) => r.snapshots.length > 0 || r.status === "live"));

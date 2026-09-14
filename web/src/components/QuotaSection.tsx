@@ -22,7 +22,14 @@ interface QuotaResponse {
   snapshots: QuotaSnapshot[];
 }
 
-const PROVIDER_LABEL: Record<string, string> = { claude: "Claude", codex: "Codex", zai: "Z.ai GLM" };
+const PROVIDER_LABEL: Record<string, string> = {
+  claude: "Claude",
+  codex: "Codex",
+  zai: "Z.ai GLM",
+  gemini: "Gemini",
+  copilot: "Copilot",
+  openrouter: "OpenRouter",
+};
 
 function barColor(pct: number): string {
   if (pct >= 90) return "bg-term-red";

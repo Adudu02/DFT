@@ -204,6 +204,7 @@ export async function buildServer(options: ServerOptions = {}) {
     const { cache, results } = await refreshQuota({
       providers: config.quota.providers,
       zaiApiKey: config.quota.zaiApiKey,
+      geminiProjectId: config.quota.geminiProjectId,
       claudeCredentialsPath: options.quotaClaudeCredentialsPath,
       codexRoot: roots.codexRoot,
       cachePath: quotaCachePath,
