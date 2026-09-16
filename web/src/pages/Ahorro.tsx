@@ -40,14 +40,14 @@ export function Ahorro() {
           <div className="h-24 mt-3">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.trend.map((p) => ({ day: p.day.slice(5), v: p.estUsd }))} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
-                <XAxis dataKey="day" tick={{ fill: "#948a78", fontSize: 10 }} interval="preserveStartEnd" />
+                <XAxis dataKey="day" tick={{ fill: "#9ca3af", fontSize: 10 }} interval="preserveStartEnd" />
                 <Tooltip
-                  contentStyle={{ background: "#1c1a17", border: "1px solid #2a2622", color: "#7dd35f" }}
-                  itemStyle={{ color: "#7dd35f" }}
-                  labelStyle={{ color: "#7dd35f" }}
+                  contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, boxShadow: "0 8px 20px -8px rgba(15,23,42,0.18)", color: "#14161b" }}
+                  itemStyle={{ color: "#16a34a" }}
+                  labelStyle={{ color: "#6b7280" }}
                   formatter={(v: number) => usd(v)}
                 />
-                <Line type="monotone" dataKey="v" stroke="#7dd35f" strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="v" stroke="#16a34a" strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -58,7 +58,7 @@ export function Ahorro() {
       {shown.map((f) => (
         <Panel key={f.kind + f.sessionId}>
           <div className="flex justify-between items-baseline gap-2">
-            <span className={`text-xs px-2 py-0.5 rounded ${f.estUsd != null ? "bg-term-amber text-black" : "bg-term-border text-term-amber"}`}>
+            <span className={`tag2 ${f.estUsd != null ? "bg-term-amber/10 text-term-amber" : "bg-term-border text-term-muted"}`}>
               {WASTE_TAG[f.kind]}
             </span>
             <span className="text-term-green font-bold">{f.estUsd != null ? usd(f.estUsd) : "—"}</span>

@@ -50,7 +50,7 @@ function QuotaBar({ s }: { s: QuotaSnapshot }) {
         </span>
         <span className="num text-term-muted">{pct}%</span>
       </div>
-      <div className="h-2 bg-term-bg border border-term-border rounded overflow-hidden">
+      <div className="h-2 bg-term-bg border border-term-border rounded-full overflow-hidden">
         <div className={`h-full ${barColor(pct)}`} style={{ width: `${Math.min(100, pct)}%` }} />
       </div>
       {s.resetsAt && <div className="text-term-muted text-[10px] mt-0.5">reset {s.resetsAt.replace("T", " ").slice(0, 16)}</div>}

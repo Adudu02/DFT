@@ -1,6 +1,6 @@
 // Constantes globales del frontend.
 
-// Rampa de acento Nocturne (carmesí) + un par de colores semánticos para gráficos.
-export const AMBER = ["#e56b83", "#c2415a", "#7a2836", "#7dd35f", "#948a78", "#e0c000", "#5f8fd3"];
+// Rampa categórica para gráficos (tema Arcade, sobre fondo claro).
+export const CHART_COLORS = ["#4c6ef5", "#16a34a", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#64748b"];
 
 export const REFRESH_MS = 30_000;

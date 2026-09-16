@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-  "description": "Dashboard local (solo lectura) de costos/actividad de agentes: adapters Claude Code + Codex, motor de costos equiv-API, detecci\u00f3n de fugas de tokens y ahorro, memoria y skills. Bindea solo a 127.0.0.1.",
+  "description": "Dashboard local (solo lectura) de costos/actividad de agentes: adapters Claude Code + Codex, motor de costos equiv-API, detección de fugas de tokens y ahorro, memoria y skills. Bindea solo a 127.0.0.1.",
   "bin": {
     "motor-agentico": "bin/motor-agentico.mjs"
   },
@@ -51,7 +51,7 @@
     "@biomejs/biome": "^2.5.13",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^26.5.1",
+    "@types/node": "^26.6.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
@@ -60,7 +60,7 @@
     "postcss": "^8.5.28",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-router-dom": "^7.18.3",
+    "react-router-dom": "^7.18.4",
     "recharts": "^3.10.1",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.13",

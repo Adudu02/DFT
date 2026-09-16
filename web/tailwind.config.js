@@ -11,26 +11,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Tema "Nocturne": fondo cálido oscuro, acento carmesí/rosa, texto marfil.
+        // Tema "Arcade": fondo claro y espacioso, tarjetas blancas, acento azul.
         // Se conservan los nombres `term-*` para no reescribir cada página; el
-        // significado cambió: term-amber = acento carmesí, no ámbar.
+        // significado cambió de nuevo: term-amber = acento azul, no carmesí.
         term: {
-          bg: "#121110",
-          panel: "#1c1a17",
-          border: "rgba(237,232,224,0.10)",
-          amber: "#e56b83", // acento (gold-bright)
-          amberdim: "#c2415a", // acento tenue (gold)
-          green: "#7dd35f", // positivo/ahorro (se mantiene verde, legible sobre el fondo)
-          red: "#ef4444", // aviso/error — distinguible del acento carmesí, legible sobre el fondo
-          muted: "#948a78",
-          text: "#ede8e0",
+          bg: "#f6f7f9",
+          panel: "#ffffff",
+          border: "rgba(15,23,42,0.08)",
+          amber: "#4c6ef5", // acento primario (azul)
+          green: "#16a34a", // positivo/ahorro
+          red: "#dc2626", // aviso/error
+          muted: "#6b7280",
+          text: "#14161b",
         },
+      },
+      borderRadius: {
+        xl: "14px",
+        "2xl": "18px",
+      },
+      boxShadow: {
+        card: "0 1px 2px rgba(15,23,42,0.04), 0 12px 24px -12px rgba(15,23,42,0.12)",
       },
       fontFamily: {
         // "num" para cifras (Bricolage Grotesque); "sans" para el cuerpo.
         num: ['"Bricolage Grotesque"', "system-ui", "sans-serif"],
         sans: ['"Bricolage Grotesque"', "system-ui", "-apple-system", "sans-serif"],
-        serif: ['"Instrument Serif"', "Georgia", "serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
       },
     },

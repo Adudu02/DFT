@@ -23,7 +23,7 @@ export function Skills() {
           {Object.entries(data.categories).sort((a, b) => b[1] - a[1]).map(([c, n]) => (
             <div key={c} className="flex items-center gap-2 text-xs">
               <span className="w-20 text-term-muted">{c}</span>
-              <div className="flex-1 bg-term-bg rounded h-3 overflow-hidden">
+              <div className="flex-1 bg-term-bg rounded-full h-3 overflow-hidden">
                 <div className="h-full bg-term-amber" style={{ width: `${(n / maxCat) * 100}%` }} />
               </div>
               <span className="w-8 text-right">{n}</span>
@@ -38,9 +38,7 @@ export function Skills() {
           <button type="button"
             key={c}
             onClick={() => setFilter(c)}
-            className={`px-3 py-1 text-xs rounded border ${
-              filter === c ? "bg-term-amber text-black border-term-amber" : "border-term-border text-term-muted"
-            }`}
+            className={`chip ${filter === c ? "active" : ""}`}
           >
             {c}
           </button>
@@ -51,7 +49,7 @@ export function Skills() {
         {skills.map((s) => (
           <div
             key={s.name}
-            className={`bg-term-panel border border-term-border rounded p-3 ${s.uses === 0 ? "opacity-40" : ""}`}
+            className={`card2 p-3 ${s.uses === 0 ? "opacity-40" : ""}`}
           >
             <div className="flex justify-between items-baseline">
               <span className="text-term-amber font-bold truncate">/{s.name}</span>

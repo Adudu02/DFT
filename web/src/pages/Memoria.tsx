@@ -37,7 +37,7 @@ export function Memoria() {
     return Math.max(0.3, 1 - days / 30);
   };
   const color = (n: MemNode) =>
-    n.stale ? "#e0c000" : n.kind === "session" ? "#5f8fd3" : n.kind === "index" ? "#7dd35f" : n.kind === "project" ? "#c2415a" : "#e56b83";
+    n.stale ? "#f59e0b" : n.kind === "session" ? "#06b6d4" : n.kind === "index" ? "#16a34a" : n.kind === "project" ? "#8b5cf6" : "#4c6ef5";
 
   return (
     <div className="grid gap-4">
@@ -59,15 +59,15 @@ export function Memoria() {
                 const a = pos.get(l.source);
                 const b = pos.get(l.target);
                 if (!a || !b) return null;
-                return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#2a2622" strokeWidth={1} />;
+                return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="#e5e7eb" strokeWidth={1} />;
               })}
               {data.nodes.map((n) => {
                 const p = pos.get(n.id)!;
                 const r = n.kind === "project" ? 10 : n.kind === "memory" ? 7 : 5;
                 return (
                   <g key={n.id} opacity={glow(n)}>
-                    <circle cx={p.x} cy={p.y} r={r} fill={color(n)} stroke="#121110" strokeWidth={1} />
-                    <text x={p.x + r + 2} y={p.y + 3} fill="#948a78" fontSize={9}>
+                    <circle cx={p.x} cy={p.y} r={r} fill={color(n)} stroke="#ffffff" strokeWidth={1.5} />
+                    <text x={p.x + r + 2} y={p.y + 3} fill="#6b7280" fontSize={9}>
                       {n.label}
                     </text>
                   </g>
@@ -78,11 +78,11 @@ export function Memoria() {
         )}
         <Legend
           items={[
-            ["#e56b83", "memoria"],
-            ["#7dd35f", "índice"],
-            ["#5f8fd3", "sesión"],
-            ["#c2415a", "proyecto"],
-            ["#e0c000", "obsoleta"],
+            ["#4c6ef5", "memoria"],
+            ["#16a34a", "índice"],
+            ["#06b6d4", "sesión"],
+            ["#8b5cf6", "proyecto"],
+            ["#f59e0b", "obsoleta"],
           ]}
         />
       </Panel>

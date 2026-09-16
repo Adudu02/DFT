@@ -11,7 +11,7 @@ import {
 } from "recharts";
 import { useApi } from "../hooks.js";
 import { usd, compact, pct } from "../utils.js";
-import { AMBER } from "../constants.js";
+import { CHART_COLORS } from "../constants.js";
 import type { Summary } from "../types.js";
 import { Panel } from "../components/Panel.js";
 import { Loading } from "../components/Loading.js";
@@ -35,20 +35,20 @@ export function Inicio() {
     <div className="grid gap-4 md:grid-cols-3">
       <QuotaSection />
       <Panel className="md:col-span-2">
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
           <span className="text-term-muted text-xs uppercase tracking-widest">
             {mode === "subs" ? `Gasto equiv. API · ${s.windowDays}d` : `Tokens · ${s.windowDays}d`}
           </span>
-          <div className="flex text-xs border border-term-border rounded overflow-hidden">
+          <div className="seg2 text-xs">
             <button type="button"
               onClick={() => setMode("subs")}
-              className={`px-2 py-0.5 ${mode === "subs" ? "bg-term-amber text-black" : "text-term-muted"}`}
+              className={`seg2-opt ${mode === "subs" ? "active" : ""}`}
             >
               SUSCRIPCIÓN
             </button>
             <button type="button"
               onClick={() => setMode("tokens")}
-              className={`px-2 py-0.5 ${mode === "tokens" ? "bg-term-amber text-black" : "text-term-muted"}`}
+              className={`seg2-opt ${mode === "tokens" ? "active" : ""}`}
             >
               TOKENS·EQUIV-API
             </button>
@@ -63,14 +63,14 @@ export function Inicio() {
         <div className="h-24 mt-3">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={spark} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
-              <XAxis dataKey="day" tick={{ fill: "#948a78", fontSize: 10 }} interval="preserveStartEnd" />
+              <XAxis dataKey="day" tick={{ fill: "#9ca3af", fontSize: 10 }} interval="preserveStartEnd" />
               <Tooltip
-                contentStyle={{ background: "#1c1a17", border: "1px solid #2a2622", color: "#e56b83" }}
-                itemStyle={{ color: "#e56b83" }}
-                labelStyle={{ color: "#e56b83" }}
+                contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, boxShadow: "0 8px 20px -8px rgba(15,23,42,0.18)", color: "#14161b" }}
+                itemStyle={{ color: "#4c6ef5" }}
+                labelStyle={{ color: "#6b7280" }}
                 formatter={(v: number) => (mode === "subs" ? usd(v) : compact(v))}
               />
-              <Line type="monotone" dataKey="v" stroke="#e56b83" strokeWidth={2} dot={false} isAnimationActive={false} />
+              <Line type="monotone" dataKey="v" stroke="#4c6ef5" strokeWidth={2} dot={false} isAnimationActive={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -100,7 +100,7 @@ export function Inicio() {
         <div className="grid gap-2">
           {s.perModel.map((m, i) => (
             <div key={m.model} className="flex items-center gap-2 text-sm">
-              <span className="w-2 h-2 rounded-full" style={{ background: AMBER[i % AMBER.length] }} />
+              <span className="w-2 h-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
               <span className={`flex-1 min-w-0 truncate ${m.known ? "" : "text-term-red"}`}>
                 {m.model}
                 {!m.known && " ·sin tarifa"}
@@ -117,12 +117,12 @@ export function Inicio() {
 
       <Panel title="Total">
         {agents.length > 0 && (
-          <div className="flex flex-wrap text-xs border border-term-border rounded overflow-hidden mb-2 w-fit">
+          <div className="seg2 text-xs flex-wrap mb-2 w-fit">
             {["todos", ...agents].map((a) => (
               <button type="button"
                 key={a}
                 onClick={() => setAgentSel(a)}
-                className={`px-2 py-0.5 ${agentSel === a ? "bg-term-amber text-black" : "text-term-muted"}`}
+                className={`seg2-opt ${agentSel === a ? "active" : ""}`}
               >
                 {a === "todos" ? "TODOS" : a}
               </button>
@@ -135,13 +135,13 @@ export function Inicio() {
               <PieChart>
                 <Pie data={donut} dataKey="costUsd" nameKey="model" innerRadius={40} outerRadius={65} paddingAngle={2} isAnimationActive={false}>
                   {donut.map((_, i) => (
-                    <Cell key={i} fill={AMBER[i % AMBER.length]} stroke="#121110" />
+                    <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#ffffff" />
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ background: "#1c1a17", border: "1px solid #2a2622", color: "#e56b83" }}
-                  itemStyle={{ color: "#e56b83" }}
-                  labelStyle={{ color: "#e56b83" }}
+                  contentStyle={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 10, boxShadow: "0 8px 20px -8px rgba(15,23,42,0.18)", color: "#14161b" }}
+                  itemStyle={{ color: "#4c6ef5" }}
+                  labelStyle={{ color: "#6b7280" }}
                   formatter={(v: number) => usd(v)}
                 />
               </PieChart>
@@ -156,9 +156,9 @@ export function Inicio() {
         <div className="grid gap-2">
           {s.perAgent.map((a, i) => (
             <div key={a.agent} className="flex items-center gap-2 text-sm">
-              <span className="w-2 h-2 rounded-full" style={{ background: AMBER[i % AMBER.length] }} />
+              <span className="w-2 h-2 rounded-full" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
               <span className="w-28 truncate">{a.agent}</span>
-              <div className="flex-1 bg-term-bg rounded h-3 overflow-hidden">
+              <div className="flex-1 bg-term-bg rounded-full h-3 overflow-hidden">
                 <div className="h-full bg-term-amber" style={{ width: `${a.share * 100}%` }} />
               </div>
               <span className="text-term-muted w-12 text-right">{pct(a.share)}</span>

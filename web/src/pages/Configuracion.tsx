@@ -137,7 +137,7 @@ export function Configuracion() {
           value={downgradeText}
           onChange={editDowngrade}
           spellCheck={false}
-          className={`w-full h-48 bg-term-bg border rounded p-2 text-xs font-mono text-term-amber ${
+          className={`w-full h-48 bg-term-bg border rounded-lg p-2 text-xs font-mono text-term-amber ${
             jsonError ? "border-term-red" : "border-term-border"
           }`}
         />
@@ -179,7 +179,7 @@ export function Configuracion() {
 
       <Panel title="pricing.json">
         {pricingStatus && pricingStatus.status !== "fresh" && (
-          <div className="text-xs text-term-red border border-term-red rounded p-2 mb-3">
+          <div className="text-xs text-term-red bg-term-red/5 border border-term-red/30 rounded-lg p-2 mb-3">
             ⚠ Precios {pricingStatus.status === "stale"
               ? `desactualizados (${pricingStatus.ageDays ?? "?"}d · TTL ${pricingStatus.maxAgeDays}d)`
               : "sin fecha de verificación"}
@@ -190,7 +190,7 @@ export function Configuracion() {
           value={pricingText}
           onChange={editPricing}
           spellCheck={false}
-          className={`w-full h-64 bg-term-bg border rounded p-2 text-xs font-mono text-term-amber ${
+          className={`w-full h-64 bg-term-bg border rounded-lg p-2 text-xs font-mono text-term-amber ${
             pricingJsonError ? "border-term-red" : "border-term-border"
           }`}
         />

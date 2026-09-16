@@ -13,7 +13,7 @@ function PromptRow({ t }: { t: SessionTurn }) {
     <button type="button"
       onClick={() => setOpen((o) => !o)}
       aria-expanded={open}
-      className="w-full text-left flex gap-2 items-baseline min-w-0 rounded px-1 -mx-1 hover:bg-term-bg focus:outline-none focus:ring-1 focus:ring-term-amber"
+      className="w-full text-left flex gap-2 items-baseline min-w-0 rounded-md px-1 -mx-1 hover:bg-term-bg focus:outline-none focus:ring-1 focus:ring-term-amber"
     >
       <span className="text-term-green font-mono flex-none" title={t.ts}>
         {t.time}

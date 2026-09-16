@@ -1,18 +1,18 @@
-/* Fuentes Nocturne. En local con internet cargan; offline caen a system-ui. */
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&family=Instrument+Serif:ital@1&display=swap");
+/* Fuente Nocturne→Arcade. En local con internet carga; offline cae a system-ui. */
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..700&display=swap");
 @import "tailwindcss";
 @config "../tailwind.config.js";
 
 :root {
-  color-scheme: dark;
-  --bg: #121110;
-  --surface: #1c1a17;
-  --text: #ede8e0;
-  --muted: #948a78;
-  --line: rgba(237, 232, 224, 0.1);
-  --gold: #c2415a;
-  --gold-dim: #7a2836;
-  --gold-bright: #e56b83;
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #14161b;
+  --muted: #6b7280;
+  --line: rgba(15, 23, 42, 0.08);
+  --gold: #3b5bdb; /* acento, tono profundo (hover/borde activo) */
+  --gold-dim: #e8ecff; /* tinte claro del acento (fondos activos, chips) */
+  --gold-bright: #4c6ef5; /* acento vivo (texto, íconos, números) */
 }
 
 body {
@@ -24,9 +24,9 @@ body {
 }
 
 .brand {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 .num {
   font-family: "Bricolage Grotesque", system-ui, sans-serif;
@@ -34,80 +34,83 @@ body {
 }
 .kicker {
   font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
   color: var(--muted);
+  font-weight: 500;
 }
 
-/* Tarjeta Nocturne: gradiente cálido, línea de acento arriba y brillo radial. */
+/* Tarjeta Arcade: blanca, borde suave, sombra difusa — sin gradiente ni glow. */
 .card2 {
   position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-  background: linear-gradient(155deg, #221d1c 0%, var(--surface) 45%, #17141a 100%);
+  border-radius: 14px;
+  background: var(--surface);
   border: 1px solid var(--line);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.03) inset,
-    0 20px 40px -20px rgba(0, 0, 0, 0.65);
-}
-.card2::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--gold-bright), transparent);
-  opacity: 0.7;
-}
-.card2::after {
-  content: "";
-  position: absolute;
-  width: 260px;
-  height: 260px;
-  top: -130px;
-  right: -90px;
-  background: radial-gradient(circle, rgba(194, 65, 90, 0.2), transparent 70%);
-  pointer-events: none;
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 12px 24px -14px rgba(15, 23, 42, 0.14);
 }
 
-/* Toggle segmentado */
+/* Badges de tendencia (positivo/negativo), estilo píldora. */
+.badge-pos,
+.badge-neg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.badge-pos {
+  color: #15803d;
+  background: #ecfdf3;
+}
+.badge-neg {
+  color: #b91c1c;
+  background: #fef2f2;
+}
+
+/* Toggle segmentado, estilo píldora */
 .seg2 {
   display: inline-flex;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 999px;
   overflow: hidden;
+  background: #f1f2f5;
+  padding: 2px;
 }
 .seg2-opt {
-  padding: 5px 9px;
+  padding: 5px 12px;
   font-size: 12px;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.01em;
   cursor: pointer;
   color: var(--muted);
   white-space: nowrap;
   background: none;
   border: none;
+  border-radius: 999px;
+  font-weight: 600;
 }
 .seg2-opt.active {
   color: var(--gold-bright);
-  box-shadow: inset 0 0 0 1px var(--gold-dim);
-  background: rgba(194, 65, 90, 0.1);
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
 /* Chips de filtro */
 .chip {
   font-size: 12px;
+  font-weight: 600;
   padding: 6px 14px;
   border-radius: 999px;
   border: 1px solid var(--line);
   color: var(--muted);
   cursor: pointer;
-  background: none;
+  background: var(--surface);
 }
 .chip.active {
   color: var(--gold-bright);
-  border-color: var(--gold-dim);
-  background: rgba(194, 65, 90, 0.1);
+  border-color: transparent;
+  background: var(--gold-dim);
 }
 
 /* Barras de progreso */
@@ -115,62 +118,106 @@ body {
   flex: 1;
   height: 6px;
   border-radius: 999px;
-  background: rgba(237, 232, 224, 0.08);
+  background: #eef0f3;
   overflow: hidden;
 }
 .bar-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--gold-dim), var(--gold-bright));
+  background: linear-gradient(90deg, var(--gold), var(--gold-bright));
 }
 
 .tagline {
   border: 1px solid var(--gold-dim);
   color: var(--gold-bright);
-  border-radius: 6px;
+  border-radius: 999px;
   font-size: 12px;
   padding: 3px 10px;
   display: inline-flex;
-  background: rgba(194, 65, 90, 0.08);
+  background: var(--gold-dim);
+  font-weight: 600;
 }
 .tag2 {
   font-size: 11px;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.02em;
   padding: 2px 8px;
-  border-radius: 5px;
+  border-radius: 999px;
   font-weight: 700;
 }
 
 /* Inputs y botones */
 .in {
   width: 100%;
-  background: var(--bg);
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 8px 12px;
   color: var(--text);
   font-size: 14px;
   box-sizing: border-box;
   font-family: inherit;
+  transition: border-color 0.15s ease;
 }
 .in::placeholder {
   color: var(--muted);
 }
+.in:hover {
+  border-color: rgba(15, 23, 42, 0.16);
+}
 .btn {
-  background: rgba(194, 65, 90, 0.12);
-  border: 1px solid var(--gold-dim);
-  color: var(--gold-bright);
-  border-radius: 8px;
+  background: var(--text);
+  border: 1px solid var(--text);
+  color: #ffffff;
+  border-radius: 999px;
   padding: 8px 16px;
   font-size: 14px;
   cursor: pointer;
   font-weight: 600;
+  transition:
+    transform 0.12s ease,
+    opacity 0.12s ease;
 }
 .btn:hover {
-  border-color: var(--gold-bright);
+  opacity: 0.85;
+}
+.btn:active {
+  transform: scale(0.97);
 }
 
-/* Foco de teclado visible y consistente (a11y): anillo carmesí solo con teclado. */
+/* Interacciones sutiles: hover/entrada suaves, sin distraer de los datos. */
+.card2,
+.chip,
+.seg2-opt {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+.card2:hover {
+  box-shadow:
+    0 2px 4px rgba(15, 23, 42, 0.05),
+    0 16px 32px -14px rgba(15, 23, 42, 0.18);
+}
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-in {
+  animation: fade-in-up 0.28s ease both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fade-in {
+    animation: none;
+  }
+}
+
+/* Foco de teclado visible y consistente (a11y): anillo azul solo con teclado. */
 .btn:focus-visible,
 .in:focus-visible,
 nav a:focus-visible,
@@ -185,6 +232,6 @@ button:focus-visible {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--gold-dim);
+  background: #d6d9e0;
   border-radius: 5px;
 }
