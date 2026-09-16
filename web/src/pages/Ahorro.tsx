@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   LineChart,
   Line,
@@ -19,10 +20,14 @@ const WASTE_TAG: Record<WasteFinding["kind"], string> = {
   "model-mismatch": "MODEL",
 };
 
+const PAGE_SIZE = 20;
+
 export function Ahorro() {
   const { data, error } = useApi<WasteReport>("/api/waste");
+  const [visible, setVisible] = useState(PAGE_SIZE);
   if (error) return <ErrorMsg msg={error} />;
   if (!data) return <Loading />;
+  const shown = data.findings.slice(0, visible);
   return (
     <div className="grid gap-4">
       <Panel>
@@ -50,7 +55,7 @@ export function Ahorro() {
         <div className="text-xs text-term-muted mt-1">tendencia: ahorro estimado por día de sesión</div>
       </Panel>
       {data.findings.length === 0 && <Empty msg="sin fugas con los umbrales actuales (ajustables en Configuración)" />}
-      {data.findings.map((f) => (
+      {shown.map((f) => (
         <Panel key={f.kind + f.sessionId}>
           <div className="flex justify-between items-baseline gap-2">
             <span className={`text-xs px-2 py-0.5 rounded ${f.estUsd != null ? "bg-term-amber text-black" : "bg-term-border text-term-amber"}`}>
@@ -65,6 +70,11 @@ export function Ahorro() {
           <div className="text-sm mt-2">{f.detail}</div>
         </Panel>
       ))}
+      {visible < data.findings.length && (
+        <button type="button" className="btn justify-self-start" onClick={() => setVisible((v) => v + PAGE_SIZE)}>
+          Cargar más ({data.findings.length - visible} restantes)
+        </button>
+      )}
     </div>
   );
 }

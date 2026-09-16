@@ -157,6 +157,7 @@ export function Actividad() {
                     <span className="text-term-amber">{s.id.slice(0, 8)}</span>
                   </span>
                   <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-term-muted">
+                    <span>{s.agent}</span>
                     <span>{s.turns} turnos</span>
                     <span>{s.models.length} modelos</span>
                     <span className="text-term-amber">{usd(s.costUsd)}</span>

@@ -17,6 +17,7 @@ export function Configuracion() {
   const [downgradeText, setDowngradeText] = useState<string>("");
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [pricingText, setPricingText] = useState<string>("");
+  const [pricingJsonError, setPricingJsonError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string>("");
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -27,7 +28,10 @@ export function Configuracion() {
     }
   }, [cfg]);
   useEffect(() => {
-    if (pricing) setPricingText(JSON.stringify(pricing, null, 2));
+    if (pricing) {
+      setPricingText(JSON.stringify(pricing, null, 2));
+      setPricingJsonError(null);
+    }
   }, [pricing]);
   if (!form) return <Loading />;
 
@@ -37,6 +41,16 @@ export function Configuracion() {
     setFailed(!response.ok);
     setMsg(response.ok ? "configuración guardada" : `error: ${result.error ?? "configuración inválida"}`);
     if (response.ok && result.config) setForm(result.config);
+  };
+  const editPricing = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    setPricingText(text);
+    try {
+      JSON.parse(text);
+      setPricingJsonError(null);
+    } catch (err) {
+      setPricingJsonError(String(err));
+    }
   };
   const savePricing = async () => {
     try {
@@ -174,12 +188,15 @@ export function Configuracion() {
         )}
         <textarea
           value={pricingText}
-          onChange={(e) => setPricingText(e.target.value)}
+          onChange={editPricing}
           spellCheck={false}
-          className="w-full h-64 bg-term-bg border border-term-border rounded p-2 text-xs font-mono text-term-amber"
+          className={`w-full h-64 bg-term-bg border rounded p-2 text-xs font-mono text-term-amber ${
+            pricingJsonError ? "border-term-red" : "border-term-border"
+          }`}
         />
+        {pricingJsonError && <div className="text-xs text-term-red mt-1">JSON inválido: {pricingJsonError}</div>}
         <div className="flex gap-2 mt-2">
-          <button type="button" onClick={savePricing} className="btn">
+          <button type="button" onClick={savePricing} disabled={pricingJsonError !== null} className="btn disabled:opacity-50 disabled:cursor-not-allowed">
             Guardar pricing
           </button>
           <button type="button" onClick={rebuild} className="btn">
