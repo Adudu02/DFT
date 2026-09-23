@@ -5,7 +5,7 @@
  * conoce la config. Best-effort: máx. una vez por proceso, nunca bloquea la
  * ingesta y todo fallo degrada en silencio (offline sigue funcionando).
  */
-import { loadPricing, pricingAgeStatus, runPricingUpdate, type Pricing } from "how-much-did-u-waste-core";
+import { dayInTz, loadPricing, pricingAgeStatus, runPricingUpdate, type Pricing, type PricingUpdateReport } from "how-much-did-u-waste-core";
 import type { Config } from "./config.js";
 
 let checkedThisSession = false;
@@ -22,7 +22,12 @@ export function __resetAutoPricingCheckForTests(): void {
  */
 export async function autoPricingCheck(
   config: Config,
-  opts: { pricingPath?: string; run?: typeof runPricingUpdate } = {},
+  opts: {
+    pricingPath?: string;
+    run?: typeof runPricingUpdate;
+    now?: () => Date;
+    onDone?: (report: PricingUpdateReport) => void | Promise<void>;
+  } = {},
 ): Promise<boolean> {
   if (!config.pricing.autoUpdate || checkedThisSession) return false;
   let pricing: Pricing;
@@ -32,9 +37,15 @@ export async function autoPricingCheck(
     return false; // sin pricing legible local: nada que chequear
   }
   const status = pricingAgeStatus(pricing, config.pricing.maxAgeDays);
-  if (status.status === "fresh") return false;
+  const verified = pricing.verified_at;
+  const currentDay = dayInTz((opts.now?.() ?? new Date()).toISOString(), config.timeZone);
+  if (status.status === "fresh" && verified && !Number.isNaN(Date.parse(verified)) && dayInTz(verified, config.timeZone) === currentDay) return false;
   checkedThisSession = true;
   // Fire and forget: la ingesta nunca espera ni falla por la red.
-  void (opts.run ?? runPricingUpdate)({ pricingPath: opts.pricingPath }).catch(() => {});
+  void (opts.run ?? runPricingUpdate)({ pricingPath: opts.pricingPath, source: config.pricing.source })
+    .then(async (report) => {
+      if (!report.error && opts.onDone) await opts.onDone(report);
+    })
+    .catch(() => {});
   return true;
 }

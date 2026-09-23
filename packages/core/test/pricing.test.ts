@@ -17,6 +17,9 @@ describe("validatePricing — sources opcional", () => {
   it("acepta sources con valores litellm|override|local", () => {
     expect(() => validatePricing({ ...base, sources: { "claude-haiku-4-5": "litellm", x: "override", y: "local" } })).not.toThrow();
   });
+  it("acepta modelsdev como origen", () => {
+    expect(() => validatePricing({ ...base, sources: { "claude-haiku-4-5": "modelsdev" } })).not.toThrow();
+  });
   it("rechaza sources con valor desconocido", () => {
     expect(() => validatePricing({ ...base, sources: { m: "internet" } })).toThrowError(/sources/);
   });

@@ -129,6 +129,7 @@ export interface Config {
   minutesPerUse: Record<string, number>;
   agentPaths: Record<string, string>;
   timeZone: string;
+  pricing: { maxAgeDays: number; autoUpdate: boolean; source: "litellm" | "modelsdev" };
   waste: WasteThresholds;
 }
 

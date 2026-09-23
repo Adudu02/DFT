@@ -1,16 +1,27 @@
 /**
- * CLI `pnpm pricing:update`: actualiza data/pricing.json desde la DB curada
- * de LiteLLM con merge de overrides manuales (add-pricing-auto-updater).
+ * CLI `pnpm pricing:update`: actualiza data/pricing.json desde la fuente
+ * configurada (LiteLLM o models.dev) con merge de overrides manuales.
  *   pnpm pricing:update           # reporte legible
  *   pnpm pricing:update -- --json # salida machine-readable
+ *   pnpm pricing:update -- --source modelsdev # elegir fuente para esta ejecución
  * Exit ≠ 0 ante fallo (red, fuente inválida); el archivo queda intacto.
  */
 import { runPricingUpdate } from "how-much-did-u-waste-core";
 import { ensureUserData } from "how-much-did-u-waste-core";
+import { loadConfig } from "how-much-did-u-waste-insights";
 
 const json = process.argv.includes("--json");
+const sourceIndex = process.argv.indexOf("--source");
+const sourceArg = sourceIndex < 0 ? undefined : process.argv[sourceIndex + 1];
+const sourceOverride = sourceArg === "litellm" || sourceArg === "modelsdev" ? sourceArg : undefined;
+if (sourceIndex >= 0 && sourceOverride === undefined) {
+  console.error("✗ --source debe ser litellm o modelsdev");
+  process.exit(1);
+}
 ensureUserData();
-const report = await runPricingUpdate();
+const config = await loadConfig();
+const source = sourceOverride ?? config.pricing.source;
+const report = await runPricingUpdate({ source });
 
 if (json) {
   console.log(JSON.stringify(report, null, 2));

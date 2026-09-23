@@ -17,7 +17,7 @@ export interface Pricing {
   verified_at?: string;
   source_url?: string;
   note?: string;
-  /** Origen de cada tarifa según el último updater run: litellm | override | local. */
+  /** Origen de cada tarifa según el último updater run. */
   sources?: Record<string, string>;
 }
 
@@ -42,8 +42,8 @@ export function validatePricing(value: unknown): Pricing {
   if (value.sources !== undefined) {
     if (!isRecord(value.sources)) throw new Error("pricing inválido: sources debe ser un objeto");
     for (const [model, origin] of Object.entries(value.sources)) {
-      if (origin !== "litellm" && origin !== "override" && origin !== "local") {
-        throw new Error(`pricing inválido: sources.${model} debe ser litellm|override|local`);
+      if (origin !== "litellm" && origin !== "modelsdev" && origin !== "override" && origin !== "local") {
+        throw new Error(`pricing inválido: sources.${model} debe ser litellm|modelsdev|override|local`);
       }
     }
   }

@@ -17,7 +17,7 @@ export interface Config {
   agentPaths: Record<string, string>;
   timeZone: string; // IANA, ej. "America/Merida". Vacío = zona del sistema.
   waste: WasteThresholds;
-  pricing: { maxAgeDays: number; autoUpdate: boolean };
+  pricing: { maxAgeDays: number; autoUpdate: boolean; source: "litellm" | "modelsdev" };
   quota: {
     providers: { claude: boolean; codex: boolean; zai: boolean; gemini: boolean; copilot: boolean; openrouter: boolean };
     zaiApiKey?: string;
@@ -35,7 +35,7 @@ export const DEFAULT_CONFIG: Config = {
   agentPaths: {},
   timeZone: "",
   waste: { ...DEFAULT_WASTE },
-  pricing: { maxAgeDays: 7, autoUpdate: true },
+  pricing: { maxAgeDays: 7, autoUpdate: true, source: "litellm" },
   quota: {
     providers: { claude: true, codex: true, zai: true, gemini: true, copilot: true, openrouter: true },
     refreshTtlMinutes: 5,
@@ -92,10 +92,11 @@ export function validateConfig(value: unknown): Partial<Config> {
     if (!isRecord(value.pricing)) throw new Error("config inválida: pricing");
     const p = value.pricing;
     for (const key of Object.keys(p)) {
-      if (key !== "maxAgeDays" && key !== "autoUpdate") throw new Error(`config inválida: pricing.${key}`);
+      if (key !== "maxAgeDays" && key !== "autoUpdate" && key !== "source") throw new Error(`config inválida: pricing.${key}`);
     }
     if (p.maxAgeDays !== undefined) nonNegative(p.maxAgeDays, "pricing.maxAgeDays", true);
     if (p.autoUpdate !== undefined && typeof p.autoUpdate !== "boolean") throw new Error("config inválida: pricing.autoUpdate debe ser booleano");
+    if (p.source !== undefined && p.source !== "litellm" && p.source !== "modelsdev") throw new Error("config inválida: pricing.source debe ser litellm o modelsdev");
   }
   if (value.quota !== undefined) {
     if (!isRecord(value.quota)) throw new Error("config inválida: quota");

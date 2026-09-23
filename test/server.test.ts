@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mkdtempSync, mkdirSync, rmSync, copyFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -155,6 +155,60 @@ describe("HTTP contracts", () => {
     expect(body.status).toBe("unknown");
     expect(body.maxAgeDays).toBe(7); // DEFAULT_CONFIG.pricing
     expect(body.verifiedAt).toBeNull();
+  });
+
+  it("refresh manual comparte el run en vuelo, recarga pricing y refleja verifiedAt", async () => {
+    const pricingPath = join(tmp, "pricing-refresh.json");
+    writeFileSync(pricingPath, JSON.stringify({ models: { test: { input: 1, output: 2 } } }));
+    const report = { updated: ["test"], added: ["new"], unchanged: [], missingRate: [] };
+    const pricingUpdate = vi.fn(async (opts: { source?: "litellm" | "modelsdev" }) => {
+      expect(opts.source).toBe("modelsdev");
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      writeFileSync(pricingPath, JSON.stringify({ models: { test: { input: 3, output: 4 } }, verified_at: "2026-09-23T12:00:00.000Z" }));
+      return report;
+    });
+    const configPath = join(tmp, "config-refresh.json");
+    writeFileSync(configPath, JSON.stringify({
+      ...DEFAULT_CONFIG,
+      pricing: { ...DEFAULT_CONFIG.pricing, source: "modelsdev" },
+      agentPaths: { "claude-code": join(tmp, "claude", "projects"), codex: join(tmp, "codex"), qwen: join(tmp, "qwen") },
+    }));
+    const refreshServer = await buildServer({
+      dbPath: join(tmp, "refresh.db"), configPath, pricingPath,
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex") },
+      pricingUpdate: pricingUpdate as never,
+    });
+    try {
+      const [first, second] = await Promise.all([
+        refreshServer.app.inject({ method: "POST", url: "/api/pricing/refresh" }),
+        refreshServer.app.inject({ method: "POST", url: "/api/pricing/refresh" }),
+      ]);
+      expect(pricingUpdate).toHaveBeenCalledTimes(1);
+      expect(first.statusCode).toBe(200);
+      expect(second.statusCode).toBe(200);
+      expect(first.json()).toEqual({ ok: true, report });
+      expect((await refreshServer.app.inject({ method: "GET", url: "/api/pricing" })).json().verified_at).toBe("2026-09-23T12:00:00.000Z");
+      expect((await refreshServer.app.inject({ method: "GET", url: "/api/pricing-status" })).json().verifiedAt).toBe("2026-09-23T12:00:00.000Z");
+    } finally {
+      await refreshServer.app.close();
+    }
+  });
+
+  it("refresh manual responde 502 cuando el reporte contiene error", async () => {
+    const refreshServer = await buildServer({
+      dbPath: join(tmp, "refresh-error.db"),
+      configPath: join(tmp, "config.json"),
+      pricingPath: join(tmp, "pricing.json"),
+      catalogRoots: { claudeRoot: join(tmp, "claude"), codexRoot: join(tmp, "codex") },
+      pricingUpdate: (async () => ({ updated: [], added: [], unchanged: [], missingRate: [], error: "offline" })) as never,
+    });
+    try {
+      const response = await refreshServer.app.inject({ method: "POST", url: "/api/pricing/refresh" });
+      expect(response.statusCode).toBe(502);
+      expect(response.json()).toEqual({ ok: false, report: { updated: [], added: [], unchanged: [], missingRate: [], error: "offline" } });
+    } finally {
+      await refreshServer.app.close();
+    }
   });
 
   it("quota: GET desde caché inyectada y POST refresh con fetch falso", async () => {

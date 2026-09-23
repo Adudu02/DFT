@@ -8,7 +8,7 @@ import fastifyStatic from "@fastify/static";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
-import { openDb, defaultDbPath } from "how-much-did-u-waste-core";
+import { openDb, defaultDbPath, runPricingUpdate } from "how-much-did-u-waste-core";
 import { ensureUserData } from "how-much-did-u-waste-core";
 import { defaultProjectsRoot, ingestAll } from "how-much-did-u-waste-core";
 import { rootsFromConfig } from "how-much-did-u-waste-core";
@@ -40,6 +40,8 @@ export interface ServerOptions {
   quotaFetch?: typeof fetch;
   /** Credenciales de Claude inyectables (tests sin credenciales reales). */
   quotaClaudeCredentialsPath?: string;
+  /** Actualizador inyectable para pruebas sin red. */
+  pricingUpdate?: typeof runPricingUpdate;
 }
 
 export async function buildServer(options: ServerOptions = {}) {
@@ -47,6 +49,7 @@ export async function buildServer(options: ServerOptions = {}) {
   // Estado mutable: pricing/config se pueden editar desde Configuracion.
   let pricing: Pricing = await loadPricing(options.pricingPath);
   let config: Config = await loadConfig(options.configPath);
+  let pricingRefresh: Promise<Awaited<ReturnType<typeof runPricingUpdate>> | null> | null = null;
   const catalogRoots = () => {
     if (options.catalogRoots) return options.catalogRoots;
     const roots = rootsFromConfig(config.agentPaths);
@@ -169,6 +172,25 @@ export async function buildServer(options: ServerOptions = {}) {
     }
   });
 
+  app.post("/api/pricing/refresh", async (_req, reply) => {
+    if (!pricingRefresh) {
+      pricingRefresh = (async () => {
+        const report = await (options.pricingUpdate ?? runPricingUpdate)({
+          pricingPath: options.pricingPath,
+          source: config.pricing.source,
+        });
+        if (!report.error) pricing = await loadPricing(options.pricingPath);
+        return report;
+      })().finally(() => { pricingRefresh = null; });
+    }
+    const report = await pricingRefresh;
+    if (report?.error) {
+      reply.code(502);
+      return { ok: false, report };
+    }
+    return { ok: true, report };
+  });
+
   app.post("/api/rebuild", async () => {
     const roots = rootsFromConfig(config.agentPaths);
     const summary = await ingestAll(db, { pricing, staleDays: config.staleDays, reparseSkills: true, ...roots });
@@ -243,7 +265,13 @@ export async function buildServer(options: ServerOptions = {}) {
   app.addHook("onClose", async () => db.close());
   // Auto-chequeo de pricing solo con paths por defecto (tests inyectan los
   // suyos y quedan herméticos); una vez por proceso, no bloquea nada.
-  if (!options.pricingPath) void autoPricingCheck(config);
+  if (!options.pricingPath) {
+    void autoPricingCheck(config, {
+      onDone: async (report) => {
+        if (!report.error) pricing = await loadPricing(options.pricingPath);
+      },
+    });
+  }
   return { app, db, pricing, config, startQuotaRefresh };
 }
 

@@ -1,7 +1,6 @@
 /**
- * Actualizador de `data/pricing.json` desde la DB curada de LiteLLM
- * (add-pricing-auto-updater). Precedencia: override manual > LiteLLM > tarifa
- * local preservada. La fuente es per-token; el mapper convierte a per-millón.
+ * Actualizador de `data/pricing.json` desde LiteLLM o models.dev.
+ * Precedencia: override manual > fuente seleccionada > tarifa local preservada.
  * Toda escritura pasa por `savePricing` (validación + escritura atómica); ante
  * fuente inválida o red caída, el archivo local queda intacto.
  */
@@ -10,6 +9,7 @@ import { loadPricing, savePricing } from "./pricing.js";
 
 export const LITELLM_URL =
   "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json";
+export const MODELSDEV_URL = "https://models.dev/api.json";
 
 /** Variantes de tier que el motor no modela; importar la barata subestimaría. */
 const TIER_SUFFIXES = ["_batches", "_priority", "_flex", "_above_272k_tokens"];
@@ -47,6 +47,25 @@ export function mapLiteLLM(raw: unknown): Record<string, Rate> {
   return out;
 }
 
+/** Mapea models.dev, cuyos costos ya están expresados en USD por millón. */
+export function mapModelsDev(raw: unknown): Record<string, Rate> {
+  if (!isRecord(raw)) throw new Error("fuente models.dev: se esperaba un objeto plano");
+  const out: Record<string, Rate> = {};
+  for (const provider of Object.values(raw)) {
+    if (!isRecord(provider) || !isRecord(provider.models)) continue;
+    for (const [rawName, model] of Object.entries(provider.models)) {
+      if (!rawName || !isRecord(model) || !isRecord(model.cost)) continue;
+      const input = model.cost.input;
+      const output = model.cost.output;
+      if (typeof input !== "number" || typeof output !== "number" || !Number.isFinite(input) || !Number.isFinite(output) || input < 0 || output < 0) continue;
+      const name = rawName.includes("/") ? rawName.slice(rawName.lastIndexOf("/") + 1) : rawName;
+      if (!name || name in out) continue; // la primera clave gana: determinista
+      out[name] = { input, output };
+    }
+  }
+  return out;
+}
+
 export interface MergedPricing {
   pricing: Pricing;
   updated: string[];
@@ -56,17 +75,18 @@ export interface MergedPricing {
   missingRate: string[];
 }
 
-/** Merge 3-orígenes: overrides > LiteLLM > local preservado, con `sources`. */
+/** Merge 3-orígenes: overrides > fuente > local preservado, con `sources`. */
 export function mergePricing(
   current: Pricing,
-  litellm: Record<string, Rate>,
+  sourceRates: Record<string, Rate>,
   overrides: Record<string, Rate>,
+  source: "litellm" | "modelsdev" = "litellm",
 ): MergedPricing {
   const models: Record<string, Rate> = {};
   const sources: Record<string, string> = {};
-  for (const [name, rate] of Object.entries(litellm)) {
+  for (const [name, rate] of Object.entries(sourceRates)) {
     models[name] = rate;
-    sources[name] = "litellm";
+    sources[name] = source;
   }
   for (const [name, rate] of Object.entries(overrides)) {
     models[name] = rate;
@@ -113,13 +133,15 @@ export async function runPricingUpdate(
   opts: {
     fetchImpl?: typeof fetch;
     url?: string;
+    source?: "litellm" | "modelsdev";
     now?: () => Date;
     pricingPath?: string;
     overridesPath?: string;
   } = {},
 ): Promise<PricingUpdateReport> {
   const doFetch = opts.fetchImpl ?? fetch;
-  const url = opts.url ?? LITELLM_URL;
+  const source = opts.source ?? "litellm";
+  const url = opts.url ?? (source === "modelsdev" ? MODELSDEV_URL : LITELLM_URL);
 
   let raw: unknown;
   try {
@@ -131,7 +153,7 @@ export async function runPricingUpdate(
   }
 
   try {
-    const litellm = mapLiteLLM(raw);
+    const rates = source === "modelsdev" ? mapModelsDev(raw) : mapLiteLLM(raw);
     const current = await loadPricing(opts.pricingPath);
     let overrides: Record<string, Rate> = {};
     if (opts.overridesPath) {
@@ -141,7 +163,7 @@ export async function runPricingUpdate(
         overrides = {}; // sin overrides (o inválidos) => merge sin ellos
       }
     }
-    const merged = mergePricing(current, litellm, overrides);
+    const merged = mergePricing(current, rates, overrides, source);
     const next: Pricing = {
       ...merged.pricing,
       verified_at: (opts.now ? opts.now() : new Date()).toISOString(),

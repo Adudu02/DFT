@@ -7,11 +7,32 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { mapLiteLLM, mergePricing, runPricingUpdate } from "../src/lib/pricing-update.js";
+import { LITELLM_URL, mapLiteLLM, mapModelsDev, mergePricing, MODELSDEV_URL, runPricingUpdate } from "../src/lib/pricing-update.js";
 import { loadPricing, type Pricing } from "../src/lib/pricing.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FIXTURE = JSON.parse(readFileSync(join(here, "fixtures", "litellm-trimmed.json"), "utf8"));
+const MODELSDEV_FIXTURE = {
+  anthropic: {
+    models: {
+      "claude-opus-5-5": { cost: { input: 4, output: 20, tiers: [{ input: 99, output: 99 }], context_over_200k: { input: 88, output: 88 } } },
+    },
+  },
+  aggregator: {
+    models: {
+      "tencent/Hy3": { cost: { input: 1.25, output: 2.5 } },
+      "openai/gpt-5.4": { cost: { input: 3, output: 12 } },
+    },
+  },
+  second: {
+    models: {
+      "gpt-5.4": { cost: { input: 30, output: 120 } },
+      missing: { cost: { input: 1 } },
+      invalid: { cost: { input: Number.NaN, output: 1 } },
+      negative: { cost: { input: 1, output: -1 } },
+    },
+  },
+};
 
 const fakeFetch = (body: unknown, ok = true, status = 200): typeof fetch =>
   (async () => ({ ok, status, json: async () => body })) as unknown as typeof fetch;
@@ -38,6 +59,25 @@ describe("mapLiteLLM", () => {
   });
   it("rechaza fuente que no es objeto plano", () => {
     expect(() => mapLiteLLM([1, 2])).toThrowError(/objeto plano/);
+  });
+});
+
+describe("mapModelsDev", () => {
+  it("conserva tarifas por millón, elimina prefijos agregadores y usa la primera clave", () => {
+    const mapped = mapModelsDev(MODELSDEV_FIXTURE);
+    expect(mapped["claude-opus-5-5"]).toEqual({ input: 4, output: 20 });
+    expect(mapped.Hy3).toEqual({ input: 1.25, output: 2.5 });
+    expect(mapped["gpt-5.4"]).toEqual({ input: 3, output: 12 });
+  });
+  it("omite costos ausentes, inválidos o negativos e ignora niveles premium", () => {
+    const mapped = mapModelsDev(MODELSDEV_FIXTURE);
+    expect(mapped.missing).toBeUndefined();
+    expect(mapped.invalid).toBeUndefined();
+    expect(mapped.negative).toBeUndefined();
+    expect(mapped["claude-opus-5-5"]).toEqual({ input: 4, output: 20 });
+  });
+  it("rechaza una fuente que no sea un objeto plano", () => {
+    expect(() => mapModelsDev([1, 2])).toThrowError(/objeto plano/);
   });
 });
 
@@ -73,6 +113,14 @@ describe("mergePricing — precedencia override > litellm > local", () => {
     expect(updated).toContain("claude-haiku-4-5"); // 9/9 ≠ 1/5
     expect(unchanged).toEqual([]); // legacy-local no compara: se preserva
   });
+  it("etiqueta models.dev y conserva precedencia de override y modelos locales", () => {
+    const rates = { "claude-haiku-4-5": { input: 4, output: 20 }, fresh: { input: 2, output: 3 } };
+    const { pricing } = mergePricing(current, rates, overrides, "modelsdev");
+    expect(pricing.sources?.fresh).toBe("modelsdev");
+    expect(pricing.sources?.["claude-haiku-4-5"]).toBe("override");
+    expect(pricing.sources?.["legacy-local"]).toBe("local");
+    expect(pricing.models["legacy-local"]).toEqual({ input: 2, output: 2 });
+  });
 });
 
 describe("runPricingUpdate — inyectable, sin tocar el archivo ante fallo", () => {
@@ -107,6 +155,39 @@ describe("runPricingUpdate — inyectable, sin tocar el archivo ante fallo", () 
     expect(saved.source_url).toBe("https://example/litellm.json");
     expect(saved.sources?.["gpt-6-astra"]).toBe("litellm");
     expect(saved.sources?.["claude-haiku-4-5"]).toBe("override");
+  });
+  it("usa URL, mapper y etiqueta de models.dev cuando se selecciona esa fuente", async () => {
+    let requestedUrl = "";
+    const report = await runPricingUpdate({
+      source: "modelsdev",
+      fetchImpl: (async (input: RequestInfo | URL) => {
+        requestedUrl = String(input);
+        return { ok: true, status: 200, json: async () => MODELSDEV_FIXTURE };
+      }) as typeof fetch,
+      pricingPath,
+      overridesPath,
+    });
+    expect(report.error).toBeUndefined();
+    expect(requestedUrl).toBe(MODELSDEV_URL);
+    const saved = await loadPricing(pricingPath);
+    expect(saved.source_url).toBe(MODELSDEV_URL);
+    expect(saved.models["claude-opus-5-5"]).toEqual({ input: 4, output: 20 });
+    expect(saved.sources?.["claude-opus-5-5"]).toBe("modelsdev");
+    expect(saved.sources?.["legacy-local"]).toBe("local");
+  });
+  it("mantiene LiteLLM como fuente predeterminada y su URL conocida", async () => {
+    let requestedUrl = "";
+    const report = await runPricingUpdate({
+      fetchImpl: (async (input: RequestInfo | URL) => {
+        requestedUrl = String(input);
+        return { ok: true, status: 200, json: async () => FIXTURE };
+      }) as typeof fetch,
+      pricingPath,
+      overridesPath,
+    });
+    expect(report.error).toBeUndefined();
+    expect(requestedUrl).toBe(LITELLM_URL);
+    expect((await loadPricing(pricingPath)).source_url).toBe(LITELLM_URL);
   });
   it("sin overrides: LiteLLM manda directo", async () => {
     const report = await runPricingUpdate({ fetchImpl: fakeFetch(FIXTURE), pricingPath, overridesPath });

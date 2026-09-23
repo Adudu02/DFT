@@ -5,10 +5,19 @@ import { Panel } from "../components/Panel.js";
 import { Loading } from "../components/Loading.js";
 import { Field } from "../components/Field.js";
 
+function formatPricingDate(value: string, timeZone: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  try {
+    return date.toLocaleString("es-MX", { timeZone: timeZone || undefined });
+  } catch {
+    return value;
+  }
+}
+
 export function Configuracion() {
   const [key, setKey] = useState(0);
-  const { data: cfg } = useApi<Config>("/api/config", key);
-  const { data: pricing } = useApi<unknown>("/api/pricing", key);
+  const { data: cfg } = useApi<Config>("/api/config", key, false);
   const { data: pricingStatus } = useApi<{ status: string; ageDays: number | null; maxAgeDays: number; verifiedAt: string | null }>(
     "/api/pricing-status",
     key,
@@ -16,10 +25,9 @@ export function Configuracion() {
   const [form, setForm] = useState<Config | null>(null);
   const [downgradeText, setDowngradeText] = useState<string>("");
   const [jsonError, setJsonError] = useState<string | null>(null);
-  const [pricingText, setPricingText] = useState<string>("");
-  const [pricingJsonError, setPricingJsonError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string>("");
   const [failed, setFailed] = useState(false);
+  const [pricingBusy, setPricingBusy] = useState(false);
   useEffect(() => {
     if (cfg) {
       setForm(cfg);
@@ -27,12 +35,6 @@ export function Configuracion() {
       setJsonError(null);
     }
   }, [cfg]);
-  useEffect(() => {
-    if (pricing) {
-      setPricingText(JSON.stringify(pricing, null, 2));
-      setPricingJsonError(null);
-    }
-  }, [pricing]);
   if (!form) return <Loading />;
 
   const saveConfig = async () => {
@@ -42,26 +44,26 @@ export function Configuracion() {
     setMsg(response.ok ? "configuración guardada" : `error: ${result.error ?? "configuración inválida"}`);
     if (response.ok && result.config) setForm(result.config);
   };
-  const editPricing = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    setPricingText(text);
+  const refreshPricing = async () => {
+    setPricingBusy(true);
+    setFailed(false);
+    setMsg("");
     try {
-      JSON.parse(text);
-      setPricingJsonError(null);
-    } catch (err) {
-      setPricingJsonError(String(err));
-    }
-  };
-  const savePricing = async () => {
-    try {
-      const body = JSON.parse(pricingText);
-      const r = await fetch("/api/pricing", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const j = await r.json();
-      setFailed(!r.ok);
-      setMsg(j.ok ? "pricing guardado — corre rebuild para recalcular" : `error: ${j.error}`);
+      const response = await fetch("/api/pricing/refresh", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok || !result.ok) {
+        setFailed(true);
+        setMsg(`error: ${result.report?.error ?? result.error ?? "no se pudieron actualizar los precios"}`);
+      } else {
+        const report = result.report;
+        setMsg(`precios: ${report.updated.length} actualizados · ${report.added.length} nuevos · ${report.unchanged.length} sin cambios · ${report.missingRate.length} sin tarifa — corré Rebuild para recalcular costos`);
+        setKey((k) => k + 1);
+      }
     } catch (e) {
       setFailed(true);
-      setMsg(`JSON inválido: ${String(e)}`);
+      setMsg(`error: ${String(e)}`);
+    } finally {
+      setPricingBusy(false);
     }
   };
   const rebuild = async () => {
@@ -88,6 +90,19 @@ export function Configuracion() {
   };
   const numW = (k: keyof WasteThresholds) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, waste: { ...form.waste, [k]: Number(e.target.value) } });
+  const pricingLabel = pricingStatus?.status === "fresh"
+    ? "actualizados"
+    : pricingStatus?.status === "stale"
+      ? `desactualizados (${pricingStatus.ageDays ?? "?"}d · TTL ${pricingStatus.maxAgeDays}d)`
+      : "sin fecha de verificación";
+  const pricingColor = pricingStatus?.status === "fresh"
+    ? "text-term-green border-term-green/30 bg-term-green/5"
+    : pricingStatus?.status === "stale"
+      ? "text-term-red border-term-red/30 bg-term-red/5"
+      : "text-term-muted border-term-border bg-term-bg";
+  const verifiedAt = pricingStatus?.verifiedAt
+    ? formatPricingDate(pricingStatus.verifiedAt, form.timeZone)
+    : "sin fecha de verificación";
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
@@ -202,31 +217,16 @@ export function Configuracion() {
         </button>
       </div>
 
-      <Panel title="pricing.json">
-        {pricingStatus && pricingStatus.status !== "fresh" && (
-          <div className="text-xs text-term-red bg-term-red/5 border border-term-red/30 rounded-lg p-2 mb-3">
-            ⚠ Precios {pricingStatus.status === "stale"
-              ? `desactualizados (${pricingStatus.ageDays ?? "?"}d · TTL ${pricingStatus.maxAgeDays}d)`
-              : "sin fecha de verificación"}
-            {" "}— revisalos y editalos abajo
-          </div>
-        )}
-        <textarea
-          value={pricingText}
-          onChange={editPricing}
-          spellCheck={false}
-          className={`w-full h-64 bg-term-bg border rounded-lg p-2 text-xs font-mono text-term-amber ${
-            pricingJsonError ? "border-term-red" : "border-term-border"
-          }`}
-        />
-        {pricingJsonError && <div className="text-xs text-term-red mt-1">JSON inválido: {pricingJsonError}</div>}
-        <div className="flex gap-2 mt-2">
-          <button type="button" onClick={savePricing} disabled={pricingJsonError !== null} className="btn disabled:opacity-50 disabled:cursor-not-allowed">
-            Guardar pricing
+      <Panel title="Precios">
+        <div className="grid gap-2 mb-3 text-xs">
+          <span className={`w-fit rounded-full border px-2 py-1 ${pricingColor}`}>{pricingLabel}</span>
+          <div className="text-term-muted">Verificado: {verifiedAt} · Fuente: {cfg?.pricing.source ?? "litellm"}</div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={refreshPricing} disabled={pricingBusy} className="btn disabled:opacity-50 disabled:cursor-not-allowed">
+            {pricingBusy ? "actualizando precios…" : "Actualizar precios ahora"}
           </button>
-          <button type="button" onClick={rebuild} className="btn">
-            Rebuild
-          </button>
+          <button type="button" onClick={rebuild} className="btn">Rebuild</button>
         </div>
       </Panel>
 
