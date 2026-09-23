@@ -11,8 +11,7 @@ export function Ayuda() {
         </p>
         <ol className="text-sm space-y-2 list-decimal ml-4">
           <li>
-            <span className="text-term-amber">Detección automática.</span> Al arrancar
-            (<code className="text-term-amber">npm run serve</code>) se ingieren solas:
+            <span className="text-term-amber">Detección automática.</span> Al iniciar el dashboard se ingieren solas:
             <ul className="ml-4 mt-1 text-term-muted list-disc">
               <li>Claude Code → <code>~/.claude/projects{/**/}*.jsonl</code></li>
               <li>Codex → <code>~/.codex/sessions/**</code> y <code>archived_sessions/</code></li>
@@ -30,10 +29,6 @@ export function Ayuda() {
             <span className="text-term-amber">Configuración → pricing.json</span>. Nunca se estima en silencio.
           </li>
         </ol>
-        <p className="text-xs text-term-muted mt-3">
-          CLI equivalente: <code className="text-term-amber">npm run cli</code> (tabla de gasto) ·{" "}
-          <code className="text-term-amber">npm run cli -- --waste</code> (fugas de tokens).
-        </p>
       </Panel>
 
       <Panel title="Seguridad y claves API">

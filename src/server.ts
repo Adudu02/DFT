@@ -56,7 +56,7 @@ export async function buildServer(options: ServerOptions = {}) {
 
   const app = Fastify({ logger: { level: process.env.LOG_LEVEL ?? "info" }, logController: new LogController({ disableRequestLogging: true }) });
 
-  app.get("/api/health", async () => ({ ok: true }));
+  app.get("/api/health", async () => ({ ok: true, pid: process.pid }));
 
   app.get("/api/summary", async (req) => {
     const q = req.query as { windowDays?: string };
@@ -177,24 +177,9 @@ export async function buildServer(options: ServerOptions = {}) {
   });
 
   const quotaCachePath = options.quotaCachePath ?? defaultQuotaCachePath();
-
-  // GET /api/quota: SIEMPRE desde caché (offline-first); estado stale con edad.
-  app.get("/api/quota", async () => {
-    const cache = readQuotaCache(quotaCachePath);
-    const ttl = config.quota.refreshTtlMinutes;
-    const { fresh, ageMinutes } = cacheFreshness(cache, ttl);
-    return {
-      status: cache ? (fresh ? "live" : "stale") : "no-data",
-      ageMinutes,
-      ttlMinutes: ttl,
-      snapshots: cache?.snapshots ?? [],
-    };
-  });
-
-  // POST /api/quota/refresh: corre los probers habilitados (paralelo, aislado),
-  // fusiona la caché y responde por proveedor. Debounce 30 s.
   let lastRefreshMs = 0;
-  app.post("/api/quota/refresh", async () => {
+
+  const runQuotaRefresh = async () => {
     const nowMs = Date.now();
     if (nowMs - lastRefreshMs < 30_000) {
       return { ok: false, error: "refresh debounced (30s)", results: [] };
@@ -212,6 +197,32 @@ export async function buildServer(options: ServerOptions = {}) {
     });
     const { fresh, ageMinutes } = cacheFreshness(cache, config.quota.refreshTtlMinutes, Date.now());
     return { ok: true, status: fresh ? "live" : "stale", ageMinutes, results };
+  };
+
+  const startQuotaRefresh = (reason: string) => {
+    void runQuotaRefresh().catch((err) => {
+      app.log.warn({ event: "quota_refresh_failed", reason, err }, "Refresh de quota fallido");
+    });
+  };
+
+  // GET /api/quota: SIEMPRE desde caché (offline-first); estado stale con edad.
+  app.get("/api/quota", async () => {
+    const cache = readQuotaCache(quotaCachePath);
+    const ttl = config.quota.refreshTtlMinutes;
+    const { fresh, ageMinutes } = cacheFreshness(cache, ttl);
+    if (config.quota.autoRefresh && !fresh) startQuotaRefresh("stale_cache");
+    return {
+      status: cache ? (fresh ? "live" : "stale") : "no-data",
+      ageMinutes,
+      ttlMinutes: ttl,
+      snapshots: cache?.snapshots ?? [],
+    };
+  });
+
+  // POST /api/quota/refresh: corre los probers habilitados (paralelo, aislado),
+  // fusiona la caché y responde por proveedor. Debounce 30 s.
+  app.post("/api/quota/refresh", async () => {
+    return runQuotaRefresh();
   });
 
   const here = dirname(fileURLToPath(import.meta.url));
@@ -233,12 +244,12 @@ export async function buildServer(options: ServerOptions = {}) {
   // Auto-chequeo de pricing solo con paths por defecto (tests inyectan los
   // suyos y quedan herméticos); una vez por proceso, no bloquea nada.
   if (!options.pricingPath) void autoPricingCheck(config);
-  return { app, db, pricing, config };
+  return { app, db, pricing, config, startQuotaRefresh };
 }
 
 export async function main() {
   ensureUserData();
-  const { app, db, pricing, config } = await buildServer();
+  const { app, db, pricing, config, startQuotaRefresh } = await buildServer();
 
   // Ingesta incremental al arrancar (fuentes read-only) + insights de memoria.
   const t0 = Date.now();
@@ -252,6 +263,7 @@ export async function main() {
   const memories = await syncMemoryNodes(db, roots.projectsRoot ?? defaultProjectsRoot(), config.staleDays);
   await writeReport({ ...summary, memories } as typeof summary, { durationMs: Date.now() - t0 });
   app.log.info({ event: "ingest_complete", files: summary.files, filesChanged: summary.filesChanged, eventsInserted: summary.eventsInserted, memories, unknownModels: summary.unknownModels.length }, "Ingesta completa");
+  startQuotaRefresh("startup");
 
   try {
     await app.listen({ host: HOST, port: PORT });

@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 /**
  * Arranque en un paso (cross-platform, única implementación del arranque).
- * Instala dependencias y compila la UI si faltan, evita levantar un segundo
- * dashboard si ya hay uno vivo, abre el navegador cuando el servidor responde
- * y limpia el proceso al salir. `start.sh` y `pnpm start` delegan aquí.
+ * Instala dependencias y compila lo que falte; `--update` reinstala, recompila
+ * y reinicia el dashboard. `start.sh` y `pnpm start` delegan aquí.
  */
 import { existsSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
@@ -14,14 +13,19 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const URL = "http://127.0.0.1:8081";
 const HEALTH = `${URL}/api/health`;
 const shell = process.platform === "win32"; // pnpm es .cmd en Windows
+const update = process.argv.includes("--update") || process.argv.includes("-u");
 
-async function healthy() {
+async function health() {
   try {
     const r = await fetch(HEALTH, { signal: AbortSignal.timeout(1000) });
-    return r.ok;
+    return r.ok ? await r.json() : null;
   } catch {
-    return false;
+    return null;
   }
+}
+
+async function healthy() {
+  return Boolean(await health());
 }
 
 function openBrowser() {
@@ -43,11 +47,45 @@ function run(cmd, args) {
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
-// Ya está corriendo (p. ej. doble clic dos veces): solo abrir el navegador.
-if (await healthy()) {
-  console.log("• El dashboard ya está corriendo en " + URL);
-  openBrowser();
-  process.exit(0);
+// Ya está corriendo: reiniciar solo si se solicitó explícitamente.
+const runningHealth = await health();
+if (runningHealth) {
+  if (!update) {
+    console.log("• El dashboard ya está corriendo en " + URL);
+    console.log("Tip: ./start.sh --update para recompilar y reiniciar");
+    openBrowser();
+    process.exit(0);
+  }
+  if (!Number.isSafeInteger(runningHealth.pid) || runningHealth.pid <= 0) {
+    console.error("• El servidor no informa su PID; cierra el dashboard en ejecución y vuelve a intentarlo.");
+    process.exit(1);
+  }
+  try {
+    process.kill(runningHealth.pid, "SIGTERM");
+  } catch (err) {
+    console.error("• No se pudo cerrar el dashboard en ejecución:", err.message);
+    process.exit(1);
+  }
+  for (let i = 0; i < 20 && (await healthy()); i++) {
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (await healthy()) {
+    console.error("• El dashboard sigue activo tras 10 segundos; ciérralo manualmente y vuelve a intentarlo.");
+    process.exit(1);
+  }
+}
+
+if (update) {
+  console.log("• Instalando dependencias…");
+  run("pnpm", ["install"]);
+  for (const [script, message] of [
+    ["build:core", "• Compilando core…"],
+    ["build:insights", "• Compilando insights…"],
+    ["build:web", "• Compilando la UI…"],
+  ]) {
+    console.log(message);
+    run("pnpm", ["run", script]);
+  }
 }
 
 if (!existsSync(join(root, "node_modules"))) {
@@ -57,6 +95,12 @@ if (!existsSync(join(root, "node_modules"))) {
 if (!existsSync(join(root, "web", "dist", "index.html"))) {
   console.log("• Compilando la UI (una sola vez)…");
   run("pnpm", ["run", "build:web"]);
+}
+for (const pkg of ["core", "insights"]) {
+  if (!existsSync(join(root, "packages", pkg, "dist"))) {
+    console.log(`• Compilando ${pkg}…`);
+    run("pnpm", ["run", `build:${pkg}`]);
+  }
 }
 
 console.log("• Arrancando dashboard en " + URL);

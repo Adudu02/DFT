@@ -1,5 +1,15 @@
 # Motor Agéntico — Implementation Plan (consolidated)
 
+> ✅ **COMPLETADO — 2026-09-16.** Los tres workstreams de este plan fueron implementados y
+> archivados en OpenSpec: **A** (10/10 adapters: Claude Code, Codex, Qwen, ZCode, Gemini CLI,
+> OpenCode, grok-cli, Goose, Amp, Crush — `zcode-gemini-adapters`, `sqlite-usage-adapters`,
+> `a3-sync-adapters`), **B** (pricing auto-updater — `add-pricing-auto-updater`, CLI
+> `pricing:update`, `pricing.json` con `verified_at`/`source_url`), **C** (quota probes fase 1+2,
+> los 6 providers planeados — `add-quota-probes`, `quota-probes-phase2`). Pendiente solo lo
+> marcado como no-goal en el propio plan (Copilot OTel, Cursor dashboard API, Aider, Qwen quota,
+> OpenAI paygo balance). Este documento queda como registro histórico; los requisitos vivos viven
+> en `openspec/specs/`.
+>
 > Consolidated 2026-09-13 from three research/Planning briefs into a single implementation plan. Research dates: 2026-09-12/13; formats verified against local machine state and upstream sources at those dates. Re-verify field names before implementing each adapter. Detailed OpenSpec artifacts live in `openspec/changes/` (`add-pricing-auto-updater`, `add-quota-probes`); this document is the standalone context + roadmap.
 
 ## What this plan delivers

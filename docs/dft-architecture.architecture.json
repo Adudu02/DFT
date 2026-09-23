@@ -1,0 +1,224 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "DFT · Motor Agéntico architecture",
+    "output": "dft-architecture.html",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Adudu02/DFT.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "574e495344ad9208a8e96d7fcd78ab106fc723eb"
+    },
+    "views": [
+      {
+        "id": "request-path",
+        "label": "Dashboard request path",
+        "focus": ["web", "server", "sqlite", "insights"],
+        "note": "Follow the browser request into the API, SQLite metrics, and domain views."
+      },
+      {
+        "id": "ingestion",
+        "label": "Ingestion pipeline",
+        "focus": ["sources", "adapters", "core", "sqlite"],
+        "note": "See how read-only transcripts become deduplicated SQLite metrics."
+      },
+      {
+        "id": "consumers",
+        "label": "CLI and quota boundaries",
+        "focus": ["cli", "server", "state", "quota"],
+        "note": "Inspect local state files, CLI/report consumers, and external quota probes."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "sources",
+      "type": "external",
+      "label": "Agent sources",
+      "sublabel": "local files",
+      "tag": "read-only",
+      "pos": [20, 280],
+      "size": [160, 68],
+      "sources": [
+        { "path": "packages/core/src/adapters/registry.ts", "line": 147, "label": "adapter discovery" },
+        { "path": "packages/insights/src/memory.ts", "line": 57, "label": "memory scan" }
+      ]
+    },
+    {
+      "id": "adapters",
+      "type": "backend",
+      "label": "Core adapters",
+      "sublabel": "Claude · Codex · Qwen",
+      "pos": [210, 280],
+      "size": [180, 68],
+      "sources": [
+        { "path": "packages/core/src/adapters/registry.ts", "line": 147, "label": "adapter registry" },
+        { "path": "packages/core/src/ingest.ts", "line": 154, "label": "adapter execution" }
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "Core engine",
+      "sublabel": "ingest · metrics · views",
+      "tag": "Tier 1",
+      "pos": [420, 280],
+      "size": [180, 68],
+      "sources": [
+        { "path": "packages/core/src/ingest.ts", "line": 147, "label": "ingestAll" },
+        { "path": "packages/core/src/index.ts", "line": 24, "label": "public boundary" }
+      ]
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite metrics DB",
+      "sublabel": "WAL · schema v2 · 6 tables",
+      "tag": "data/motor.db",
+      "pos": [630, 280],
+      "size": [200, 68],
+      "sources": [
+        { "path": "packages/core/src/lib/db.ts", "line": 12, "label": "schema + WAL" },
+        { "path": "packages/insights/src/memory_sync.ts", "line": 5, "label": "memory_nodes" }
+      ]
+    },
+    {
+      "id": "insights",
+      "type": "backend",
+      "label": "Insights domain",
+      "sublabel": "waste · skills · memory · config",
+      "tag": "Tier 2",
+      "pos": [630, 100],
+      "size": [200, 68],
+      "sources": [
+        { "path": "packages/insights/src/index.ts", "line": 12, "label": "public boundary" },
+        { "path": "packages/insights/src/waste.ts", "line": 135, "label": "waste analysis" }
+      ]
+    },
+    {
+      "id": "server",
+      "type": "backend",
+      "label": "Fastify API",
+      "sublabel": "127.0.0.1:8081 · JSON routes",
+      "tag": "composition root",
+      "pos": [860, 280],
+      "size": [190, 68],
+      "sources": [
+        { "path": "src/server.ts", "line": 45, "label": "buildServer" },
+        { "path": "src/server.ts", "line": 59, "label": "API routes" }
+      ]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "React dashboard",
+      "sublabel": "Vite · pages · charts",
+      "pos": [1080, 280],
+      "size": [180, 68],
+      "sources": [
+        { "path": "web/src/App.tsx", "line": 1, "label": "routes + lazy pages" },
+        { "path": "web/src/hooks.ts", "line": 38, "label": "API hook" }
+      ]
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "JSON state files",
+      "sublabel": "config · pricing · quota cache",
+      "tag": "data/*.json",
+      "pos": [860, 100],
+      "size": [190, 68],
+      "sources": [
+        { "path": "packages/insights/src/config.ts", "line": 123, "label": "config path" },
+        { "path": "packages/core/src/quota/cache.ts", "line": 24, "label": "atomic quota cache" }
+      ]
+    },
+    {
+      "id": "quota",
+      "type": "external",
+      "label": "Quota providers",
+      "sublabel": "Claude · Codex · Gemini",
+      "tag": "credentialed HTTP",
+      "pos": [1080, 100],
+      "size": [180, 68],
+      "sources": [
+        { "path": "packages/core/src/quota/probers.ts", "line": 18, "label": "prober registry" },
+        { "path": "packages/core/src/quota/refresh.ts", "line": 27, "label": "refresh orchestration" }
+      ]
+    },
+    {
+      "id": "cli",
+      "type": "backend",
+      "label": "CLI + reporter",
+      "sublabel": "CLI · CI reporter",
+      "tag": "secondary consumers",
+      "pos": [420, 450],
+      "size": [180, 68],
+      "sources": [
+        { "path": "src/cli.ts", "line": 1, "label": "CLI" },
+        { "path": "packages/reporter/src/index.ts", "line": 1, "label": "reporter" }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "DFT local application",
+      "wraps": ["adapters", "core", "sqlite", "insights", "server", "state"]
+    },
+    {
+      "kind": "security-group",
+      "label": "loopback API boundary",
+      "wraps": ["server"]
+    }
+  ],
+  "connections": [
+    { "id": "sources-adapters", "from": "sources", "to": "adapters", "label": "read-only files", "variant": "emphasis", "labelDy": 58 },
+    { "id": "adapters-core", "from": "adapters", "to": "core", "label": "parsed events", "labelDy": 58 },
+    { "id": "core-sqlite", "from": "core", "to": "sqlite", "label": "write metrics", "labelDy": 58 },
+    { "id": "sqlite-insights", "from": "sqlite", "to": "insights", "label": "aggregate reads", "fromSide": "top", "toSide": "bottom" },
+    { "id": "sqlite-server", "from": "sqlite", "to": "server", "label": "SQL read models", "labelDy": 58 },
+    { "id": "insights-server", "from": "insights", "to": "server", "label": "domain views", "fromSide": "right", "toSide": "top" },
+    { "id": "state-server", "from": "state", "to": "server", "label": "config + cache", "fromSide": "bottom", "toSide": "top", "labelDy": 24 },
+    { "id": "quota-server", "from": "quota", "to": "server", "label": "quota probes", "variant": "dashed", "fromSide": "bottom", "toSide": "top" },
+    { "id": "server-web", "from": "server", "to": "web", "label": "HTTP JSON", "variant": "emphasis", "labelDy": 58 },
+    { "id": "cli-core", "from": "cli", "to": "core", "label": "library calls", "variant": "dashed", "fromSide": "top", "toSide": "bottom" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "SQLite tables",
+      "items": [
+        "sessions — ingested session identity and source path",
+        "usage_events — token, cache, model, day, and cost facts",
+        "skills_usage — detected skill invocations",
+        "ingest_offsets — incremental file checkpoints",
+        "memory_nodes — Insights memory snapshot",
+        "schema_info — migration version"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Dependency direction",
+      "items": [
+        "Core has no server or UI dependency",
+        "Insights consumes Core and adds product opinions",
+        "Server composes both packages behind HTTP",
+        "CLI and reporter are secondary library consumers"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Boundaries and risks",
+      "items": [
+        "Transcript and memory sources are read-only inputs",
+        "SQLite and JSON files are local derived state",
+        "Logical session relationships have no foreign-key constraints",
+        "Quota probes cross an external credentialed HTTP boundary"
+      ]
+    }
+  ]
+}

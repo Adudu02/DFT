@@ -81,7 +81,8 @@ describe("HTTP contracts", () => {
   it("health responde ok", async () => {
     const health = await server.app.inject({ method: "GET", url: "/api/health" });
     expect(health.statusCode).toBe(200);
-    expect(health.json()).toEqual({ ok: true });
+    expect(health.json()).toMatchObject({ ok: true });
+    expect(typeof health.json().pid).toBe("number");
   });
 
   it("refresh ingesta hermética y devuelve contadores", async () => {
@@ -189,8 +190,87 @@ describe("HTTP contracts", () => {
       expect(claude.status).toBe("live");
       expect(claude.snapshots[0].usedPercent).toBe(42);
 
+      const debounced = await qServer.app.inject({ method: "POST", url: "/api/quota/refresh" });
+      expect(debounced.json()).toMatchObject({ ok: false, error: "refresh debounced (30s)" });
+
       const after = await qServer.app.inject({ method: "GET", url: "/api/quota" });
       expect(after.json().snapshots.find((s: { provider: string }) => s.provider === "claude").usedPercent).toBe(42);
+    } finally {
+      await qServer.app.close();
+    }
+  });
+
+  it("quota autoRefresh=false conserva GET cache-only cuando está stale", async () => {
+    const cachePath = join(tmp, "qcache-false", "quota-cache.json");
+    mkdirSync(dirname(cachePath), { recursive: true });
+    const fetchedAt = new Date(Date.now() - 10 * 60_000).toISOString();
+    writeFileSync(cachePath, JSON.stringify({ version: 1, fetchedAt, snapshots: [] }));
+    const configPath = join(tmp, "config-quota-false.json");
+    writeFileSync(configPath, JSON.stringify({
+      ...DEFAULT_CONFIG,
+      quota: {
+        ...DEFAULT_CONFIG.quota,
+        autoRefresh: false,
+        providers: { ...DEFAULT_CONFIG.quota.providers, codex: false, zai: false, gemini: false, copilot: false, openrouter: false },
+      },
+    }));
+    let fetchCalls = 0;
+    const qServer = await buildServer({
+      dbPath: join(tmp, "q-false.db"),
+      configPath,
+      pricingPath: join(tmp, "pricing.json"),
+      quotaCachePath: cachePath,
+      quotaFetch: (async () => {
+        fetchCalls++;
+        return { ok: true, json: async () => ({ five_hour: { utilization: 42 } }) };
+      }) as unknown as typeof fetch,
+      quotaClaudeCredentialsPath: join(tmp, "missing-creds.json"),
+    });
+    try {
+      const get = await qServer.app.inject({ method: "GET", url: "/api/quota" });
+      expect(get.json()).toMatchObject({ status: "stale", snapshots: [] });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(fetchCalls).toBe(0);
+    } finally {
+      await qServer.app.close();
+    }
+  });
+
+  it("quota autoRefresh=true lanza un probe en segundo plano y conserva debounce", async () => {
+    const cachePath = join(tmp, "qcache-true", "quota-cache.json");
+    mkdirSync(dirname(cachePath), { recursive: true });
+    const fetchedAt = new Date(Date.now() - 10 * 60_000).toISOString();
+    writeFileSync(cachePath, JSON.stringify({ version: 1, fetchedAt, snapshots: [] }));
+    const configPath = join(tmp, "config-quota-true.json");
+    writeFileSync(configPath, JSON.stringify({
+      ...DEFAULT_CONFIG,
+      quota: {
+        ...DEFAULT_CONFIG.quota,
+        autoRefresh: true,
+        providers: { ...DEFAULT_CONFIG.quota.providers, codex: false, zai: false, gemini: false, copilot: false, openrouter: false },
+      },
+    }));
+    writeFileSync(join(tmp, "claude-quota-creds.json"), JSON.stringify({ claudeAiOauth: { accessToken: "fake-token" } }));
+    let fetchCalls = 0;
+    const qServer = await buildServer({
+      dbPath: join(tmp, "q-true.db"),
+      configPath,
+      pricingPath: join(tmp, "pricing.json"),
+      quotaCachePath: cachePath,
+      quotaFetch: (async () => {
+        fetchCalls++;
+        return { ok: true, json: async () => ({ five_hour: { utilization: 42 } }) };
+      }) as unknown as typeof fetch,
+      quotaClaudeCredentialsPath: join(tmp, "claude-quota-creds.json"),
+    });
+    try {
+      const first = await qServer.app.inject({ method: "GET", url: "/api/quota" });
+      expect(first.json()).toMatchObject({ status: "stale", snapshots: [] });
+      const debounced = await qServer.app.inject({ method: "POST", url: "/api/quota/refresh" });
+      expect(debounced.json()).toMatchObject({ ok: false, error: "refresh debounced (30s)" });
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(fetchCalls).toBe(1);
+      expect((await qServer.app.inject({ method: "GET", url: "/api/quota" })).json().snapshots[0]).toMatchObject({ usedPercent: 42 });
     } finally {
       await qServer.app.close();
     }

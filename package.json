@@ -19,6 +19,7 @@
   },
   "scripts": {
     "start": "node scripts/start.mjs",
+    "update": "node scripts/start.mjs --update",
     "launcher": "bash scripts/install-launcher.sh",
     "cli": "tsx src/cli.ts",
     "pricing:update": "tsx src/pricing-update-cli.ts",
@@ -43,6 +44,7 @@
   },
   "dependencies": {
     "@fastify/static": "^10.1.3",
+    "@sqlite.org/sqlite-wasm": "3.53.4-build1",
     "fastify": "^5.12.4",
     "motor-agentico-core": "workspace:*",
     "motor-agentico-insights": "workspace:*"

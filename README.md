@@ -87,6 +87,9 @@ Linux/macOS, `./start.sh` does the same and also opens the browser. If a
 dashboard is already running, it just opens the browser instead of starting a
 second server.
 
+After pulling new code, run `./start.sh --update` (or `pnpm run update`) to
+reinstall dependencies, rebuild the dashboard and restart the server.
+
 ## Connect agents (local)
 
 Read-only, no logins, no keys. On startup it auto-detects Claude Code
@@ -225,8 +228,8 @@ Both import everything from their package barrel — never from internal routes.
 `GET /api/summary` · `GET /api/skills` · `GET /api/memory` · `GET /api/activity` ·
 `GET /api/activity/search` · `GET /api/export?format=csv|json` · `GET /api/waste` ·
 `GET /api/session/:id` · `GET /api/session/:id/turns` · `GET|PUT /api/config` ·
-`GET|PUT /api/pricing` · `POST /api/rebuild` · `POST /api/refresh` ·
-`GET /api/health`.
+`GET|PUT /api/pricing` · `GET /api/quota` · `POST /api/quota/refresh` ·
+`POST /api/rebuild` · `POST /api/refresh` · `GET /api/health`.
 
 `/api/activity` accepts `limit` (max 100), `cursor`, `project`, `agent` and
 `model`, and responds `{ days, nextCursor }`; use `nextCursor` for the next page.
@@ -246,3 +249,38 @@ cost = in·rate_in + out·rate_out + cache_write·rate_in·1.25 + cache_read·ra
 
 Labeled **API-equivalent**: what it would have cost at measured rates (the user
 pays a subscription). Unknown model → cost 0 + warning, never silently estimated.
+
+## Changelog
+
+### 2026-09 — Quota panel, self-update & UI polish
+
+- **Quota panel (offline-first).** New Home section + `pnpm quota` CLI showing
+  your Claude plan limits (5-hour and weekly windows) from local state.
+  `GET /api/quota` always answers from cache (never blocks on the network);
+  when the cache is stale an auto-refresh runs in the background, and
+  `POST /api/quota/refresh` forces it (30 s debounce).
+- **`pnpm run update` / `./start.sh --update`.** One command to reinstall
+  dependencies, rebuild the dashboard and restart the server after pulling.
+- **SQLite via WASM.** `@sqlite.org/sqlite-wasm` replaces the native
+  `better-sqlite3` binding — no compiler toolchain needed to install or
+  publish, same WAL mode and on-disk format.
+- **UI fixes.** Arcade redesign follow-ups: Settings and Help page tweaks,
+  hooks and CSS corrections, `/api/health` now reports the server PID, and the
+  stray `guia-qwen.html` was removed from the repo.
+- **Fixture hygiene.** The "real transcript" test fixtures were scrubbed
+  (embedded file contents and identifiers removed); they still exercise the
+  same parser paths.
+
+### 2026-09 — Arcade redesign
+
+- Light theme by default, sidebar navigation, pill components, inline SVG
+  favicon (no more `/favicon.ico` 404s), Ahorro pagination and pricing JSON
+  feedback fixes, agent labels in Actividad.
+
+### 2026-08 — Quality wave
+
+- React Router with stable URLs and per-page code splitting (initial bundle
+  569 KB → ~235 KB), accessibility foundations (focus rings, ARIA names,
+  labeled SVG), per-page error boundary with retry, DB schema versioning with
+  ordered migrations, streaming `searchPrompts`, CI matrix on Node 22/24 with
+  `pnpm audit`. See `docs/MEJORAS.md` for the full 21-item traceability table.

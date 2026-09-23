@@ -21,7 +21,14 @@ function bumpTick() {
 /** Reingesta incremental en el servidor y refresca todos los paneles. */
 export async function refreshAll(): Promise<void> {
   try {
-    await fetch("/api/refresh", { method: "POST" });
+    const response = await fetch("/api/refresh", { method: "POST" });
+    if (response.ok) {
+      try {
+        await fetch("/api/quota/refresh", { method: "POST" });
+      } catch {
+        // un fallo de quota no debe bloquear la refrescada de la UI
+      }
+    }
   } catch {
     // si el servidor no responde, igual reintentamos el fetch de datos
   }

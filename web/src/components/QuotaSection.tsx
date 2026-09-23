@@ -73,9 +73,6 @@ export function QuotaSection() {
       {data.snapshots.map((s, i) => (
         <QuotaBar key={`${s.provider}-${s.model ?? ""}-${s.window}-${i}`} s={s} />
       ))}
-      <div className="text-term-muted text-[10px] mt-1">
-        Refrescá con <code>pnpm quota -- --refresh</code> · TTL {data.ttlMinutes} min
-      </div>
     </Panel>
   );
 }
