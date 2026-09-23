@@ -7,9 +7,11 @@ A local-first cost & activity dashboard for coding agents. It reads Claude Code
 in **read-only** mode, computes the "API-equivalent" spend, and points at where
 tokens are leaking and how to cut it.
 
-![Dashboard — equiv-API spend, share by model and by agent](docs/img/dashboard-home.png)
+![Dashboard — remaining quota, equiv-API spend and model share](docs/img/dashboard-home.png)
 
-![Waste page — ranked leaks with estimated savings (project names anonymized)](docs/img/dashboard-waste.png)
+![Ahorro — ranked leaks with estimated savings (identifiers anonymized)](docs/img/dashboard-savings.png)
+
+![Actividad — filterable timeline with per-session drill-down (identifiers anonymized)](docs/img/dashboard-activity.png)
 
 > **Real example** (`pnpm cli -- --waste` over the author's own transcripts):
 > **98 leaks found, ~$310 estimated savings**. The biggest: a single session with
@@ -183,7 +185,7 @@ pnpm typecheck      # tsc --noEmit
   Every real ingest writes `./data/reports/run-<ts>.json`; `pnpm improve` reads
   the latest report and launches Claude Code **on this repo** (never on the
   sources) to fix parsers/heuristics and add tests; `--dry` prints the prompt.
-- **F-waste** — the Waste page. Unlike the rest of the dashboard (which MEASURES
+- **F-waste** — the waste analysis (now the Ahorro page). Unlike the rest of the dashboard (which MEASURES
   spend), it flags WHERE tokens leak and what to do: *cache-miss* (low cache hit
   rate; context re-sent as 1× input instead of 0.10× reads), *session-bloat*
   (huge sessions; informational, suggests splitting) and *model-mismatch*
