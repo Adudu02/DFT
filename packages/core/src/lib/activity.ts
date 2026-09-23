@@ -3,13 +3,14 @@
  * drill-down por sesión con desglose de tokens/costo por modelo.
  *
  * PRIVACIDAD: los prompts NO se guardan en la DB. `getSessionTurns` los lee del
- * transcript original (solo lectura) en el momento de la consulta y los devuelve
- * sin persistirlos — la garantía "la DB solo guarda métricas" sigue intacta.
+ * transcript original o de un snapshot temporal read-only de OpenCode al
+ * consultarlos — la garantía "la DB solo guarda métricas" sigue intacta.
  */
 import { createReadStream } from "node:fs";
 import { createInterface } from "node:readline";
 import { readFileRO } from "./fs-readonly.js";
-import { dayInTz } from "./time.js";
+import { dayInTz, toIsoTimestamp } from "./time.js";
+import { withSqliteSnapshot } from "./sqlite-snapshot.js";
 import type { DB } from "./db.js";
 
 export interface ActivitySession {
@@ -185,9 +186,29 @@ export async function searchPrompts(
     .all(...args) as { id: string; project: string; agent: string; startedAt: string | null; endedAt: string | null; path: string }[];
   const max = Number.isFinite(limit) ? Math.max(1, Math.min(Math.floor(limit), 50)) : 30;
   const results: PromptSearchResult[] = [];
+  const idsByPath = new Map<string, string[]>();
+  for (const session of sessions) {
+    if (!isBinarySource(session.path)) continue;
+    const ids = idsByPath.get(session.path) ?? [];
+    ids.push(session.id);
+    idsByPath.set(session.path, ids);
+  }
+  const promptsByPath = new Map<string, Map<string, { ts: string; prompt: string }[]>>();
   for (const session of sessions) {
     if (results.length >= max) break;
-    if (isBinarySource(session.path)) continue; // OpenCode: no es un transcript JSONL
+    if (isBinarySource(session.path)) {
+      let promptsBySession = promptsByPath.get(session.path);
+      if (!promptsBySession) {
+        promptsBySession = await opencodePrompts(session.path, idsByPath.get(session.path) ?? []);
+        promptsByPath.set(session.path, promptsBySession);
+      }
+      for (const item of promptsBySession.get(session.id) ?? []) {
+        if (!item.prompt.toLocaleLowerCase().includes(needle)) continue;
+        results.push({ ...session, prompt: item.prompt.slice(0, 300) });
+        if (results.length >= max) break;
+      }
+      continue;
+    }
     // Streaming línea a línea (solo lectura): nunca carga el transcript completo.
     const input = createReadStream(session.path, { encoding: "utf8" });
     const rl = createInterface({ input, crlfDelay: Infinity });
@@ -311,6 +332,71 @@ function isBinarySource(path: string): boolean {
 }
 
 /**
+ * Lee prompts OpenCode desde un snapshot temporal; nunca abre la fuente para
+ * escribir ni persiste el texto.
+ */
+export async function opencodePrompts(sourcePath: string, sessionIds: string[]): Promise<Map<string, { ts: string; prompt: string }[]>> {
+  const out = new Map<string, { ts: string; prompt: string }[]>();
+  if (sessionIds.length === 0) return out;
+  try {
+    return await withSqliteSnapshot(sourcePath, (snapshot) => {
+      const rows = snapshot
+        .prepare(
+          `SELECT m.id AS mid, m.session_id AS sid, m.time_created AS mts, m.data AS mdata, p.data AS pdata
+           FROM message m JOIN part p ON p.message_id = m.id
+           WHERE m.session_id IN (${sessionIds.map(() => "?").join(",")})
+           ORDER BY m.session_id, m.time_created, m.id, p.time_created, p.id`,
+        )
+        .all(...sessionIds) as { mid: string; sid: string; mts: unknown; mdata: string; pdata: string }[];
+      const messages = new Map<string, { sid: string; mts: unknown; texts: string[] }>();
+      for (const row of rows) {
+        let messageData: unknown;
+        let partData: unknown;
+        try {
+          messageData = JSON.parse(row.mdata);
+          partData = JSON.parse(row.pdata);
+        } catch {
+          continue;
+        }
+        if (!messageData || typeof messageData !== "object" || Array.isArray(messageData)) continue;
+        if (!partData || typeof partData !== "object" || Array.isArray(partData)) continue;
+        if ((messageData as { role?: unknown }).role !== "user") continue;
+        const part = partData as { type?: unknown; text?: unknown; synthetic?: unknown; ignored?: unknown };
+        if (part.type !== "text" || typeof part.text !== "string" || part.synthetic === true || part.ignored === true) continue;
+        let message = messages.get(row.mid);
+        if (!message) {
+          message = { sid: row.sid, mts: row.mts, texts: [] };
+          messages.set(row.mid, message);
+        }
+        message.texts.push(part.text);
+      }
+      for (const message of messages.values()) {
+        const ts = toIsoTimestamp(message.mts);
+        if (!ts) continue;
+        const prompt = cleanPrompt(message.texts.join("\n"));
+        if (!prompt) continue;
+        const prompts = out.get(message.sid) ?? [];
+        prompts.push({ ts, prompt });
+        out.set(message.sid, prompts);
+      }
+      return out;
+    });
+  } catch {
+    return new Map();
+  }
+}
+
+/** Divide en unidades enteras y concentra el residuo por redondeo en el último turno. */
+export function evenSplit(total: number, n: number, scale: number): number[] {
+  if (n <= 0) return [];
+  const units = Math.round(total * scale);
+  const base = Math.floor(units / n);
+  const rows = Array.from({ length: n - 1 }, () => base / scale);
+  rows.push(total - rows.reduce((sum, row) => sum + row, 0));
+  return rows;
+}
+
+/**
  * Turnos de una sesión: cada prompt del usuario con su hora y lo que costaron
  * las respuestas hasta el siguiente prompt. Lee el transcript en SOLO LECTURA;
  * no persiste nada.
@@ -325,7 +411,25 @@ export async function getSessionTurns(
     | undefined;
   if (!row) return null;
   if (!row.path) return []; // sesión ingerida antes de guardar la ruta => rebuild
-  if (isBinarySource(row.path)) return []; // fuente no-JSONL (OpenCode): sin prompts por diseño
+  if (isBinarySource(row.path)) {
+    const prompts = (await opencodePrompts(row.path, [id])).get(id) ?? [];
+    if (prompts.length === 0) return [];
+    const totals = db
+      .prepare(
+        `SELECT COALESCE(SUM(cost_usd), 0) AS cost,
+                COALESCE(SUM(input_tokens + output_tokens + cache_write_tokens + cache_read_tokens), 0) AS tokens
+         FROM usage_events WHERE session_id = ?`,
+      )
+      .get(id) as { cost: number; tokens: number };
+    const costs = evenSplit(totals.cost, prompts.length, 1e6);
+    const tokens = evenSplit(totals.tokens, prompts.length, 1);
+    return prompts.map((prompt, i) => ({
+      ...prompt,
+      time: hhmm(prompt.ts, timeZone),
+      costUsd: costs[i],
+      tokens: tokens[i],
+    }));
+  }
 
   let raw: string;
   try {

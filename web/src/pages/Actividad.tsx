@@ -44,6 +44,12 @@ function SessionDrill({ id }: { id: string }) {
         </div>
       ))}
 
+      {data.agent === "opencode" && turns && turns.length > 0 && (
+        <div className="mt-2 text-term-muted" style={{ fontSize: 10 }}>
+          Costo por turno de OpenCode = reparto parejo del total de la sesión (OpenCode no registra costo por turno).
+        </div>
+      )}
+
       {turns && turns.length > 0 && (
         <div className="mt-3 border-t border-term-border/50 pt-2">
           <div className="text-term-muted uppercase tracking-widest mb-1" style={{ fontSize: 10 }}>
@@ -58,7 +64,7 @@ function SessionDrill({ id }: { id: string }) {
       )}
       {turns && turns.length === 0 && (
         <div className="mt-2 text-term-muted" style={{ fontSize: 10 }}>
-          (sin prompts legibles — OpenCode no expone prompts por turno; si la sesión es muy vieja, corré Rebuild)
+          (sin prompts legibles — si la sesión es muy vieja, corré Rebuild)
         </div>
       )}
     </div>
