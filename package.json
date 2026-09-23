@@ -3,7 +3,28 @@
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
-  "description": "Dashboard local (solo lectura) de costos/actividad de agentes: adapters Claude Code + Codex, motor de costos equiv-API, detección de fugas de tokens y ahorro, memoria y skills. Bindea solo a 127.0.0.1.",
+  "description": "Local-first, read-only cost & activity dashboard for coding agents (Claude Code, Codex, Qwen): API-equivalent spend, token-leak detection, skills and memory. Binds to 127.0.0.1 only.",
+  "author": "Adudu02",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Adudu02/DFT.git"
+  },
+  "homepage": "https://github.com/Adudu02/DFT#readme",
+  "bugs": {
+    "url": "https://github.com/Adudu02/DFT/issues"
+  },
+  "keywords": [
+    "cli",
+    "dashboard",
+    "tokens",
+    "cost",
+    "usage",
+    "llm",
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "qwen"
+  ],
   "bin": {
     "motor-agentico": "bin/motor-agentico.mjs"
   },
@@ -15,7 +36,7 @@
     "SECURITY.md"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "scripts": {
     "start": "node scripts/start.mjs",

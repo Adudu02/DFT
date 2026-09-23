@@ -2,8 +2,30 @@
   "name": "motor-agentico-core",
   "version": "1.0.0",
   "type": "module",
-  "description": "Motor de costos/actividad/fugas de agentes de IA (Claude Code, Codex, Qwen). Solo lectura sobre las fuentes; librer\u00eda sin servidor ni UI.",
+  "description": "Cost/activity/token-leak engine for AI coding agents (Claude Code, Codex, Qwen). Read-only over the sources; library without server or UI.",
   "license": "MIT",
+  "author": "Adudu02",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Adudu02/DFT.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/Adudu02/DFT#readme",
+  "bugs": {
+    "url": "https://github.com/Adudu02/DFT/issues"
+  },
+  "keywords": [
+    "llm",
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "qwen",
+    "tokens",
+    "cost",
+    "usage",
+    "sqlite",
+    "analytics"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

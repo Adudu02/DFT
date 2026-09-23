@@ -2,8 +2,27 @@
   "name": "motor-agentico-insights",
   "version": "1.0.0",
   "type": "module",
-  "description": "Capa de dominio del dashboard sobre motor-agentico-core: fugas (waste), skills, memoria y config. Depende del motor; sin servidor ni UI.",
+  "description": "Domain layer on top of motor-agentico-core: waste findings (token leaks), skills catalog, memory graph and user config. No server, no UI.",
   "license": "MIT",
+  "author": "Adudu02",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Adudu02/DFT.git",
+    "directory": "packages/insights"
+  },
+  "homepage": "https://github.com/Adudu02/DFT#readme",
+  "bugs": {
+    "url": "https://github.com/Adudu02/DFT/issues"
+  },
+  "keywords": [
+    "llm",
+    "ai-agents",
+    "claude-code",
+    "waste",
+    "skills",
+    "memory",
+    "insights"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -2,8 +2,26 @@
   "name": "motor-agentico-report",
   "version": "1.0.0",
   "type": "module",
-  "description": "Reporter de fugas de tokens para CI/terminal. Segundo consumidor de motor-agentico-core: sin servidor ni UI, exit-code por umbral.",
+  "description": "Token-waste reporter for CI/terminal: exit-code by threshold, second consumer of motor-agentico-core. No server, no UI.",
   "license": "MIT",
+  "author": "Adudu02",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Adudu02/DFT.git",
+    "directory": "packages/reporter"
+  },
+  "homepage": "https://github.com/Adudu02/DFT#readme",
+  "bugs": {
+    "url": "https://github.com/Adudu02/DFT/issues"
+  },
+  "keywords": [
+    "cli",
+    "llm",
+    "tokens",
+    "waste",
+    "ci",
+    "report"
+  ],
   "bin": {
     "motor-agentico-report": "dist/index.js"
   },
