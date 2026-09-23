@@ -21,10 +21,10 @@ function Brand() {
   return (
     <div className="flex items-center gap-2.5 px-1">
       <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-term-amber to-[#3b5bdb] flex items-center justify-center flex-none shadow-sm">
-        <span className="brand text-white text-sm">M</span>
+        <span className="brand text-white text-sm">$</span>
       </div>
       <div className="min-w-0 leading-tight">
-        <div className="brand text-[15px] text-term-text truncate">Motor Agéntico</div>
+        <div className="brand text-[15px] text-term-text truncate">How much did u waste?</div>
         <div className="text-[11px] text-term-muted truncate">Costos &amp; actividad</div>
       </div>
     </div>
