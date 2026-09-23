@@ -1,4 +1,4 @@
-# How much did u waste? · v0.0.1
+# How much did u waste? · v0.0.2-beta
 
 [![CI](https://github.com/Adudu02/DFT/actions/workflows/ci.yml/badge.svg)](https://github.com/Adudu02/DFT/actions/workflows/ci.yml)
 

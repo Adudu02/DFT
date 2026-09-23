@@ -1,6 +1,6 @@
 {
   "name": "how-much-did-u-waste-core",
-  "version": "0.0.1",
+  "version": "0.0.2-beta",
   "type": "module",
   "description": "Cost/activity/token-leak engine for AI coding agents (Claude Code, Codex, Qwen). Read-only over the sources; library without server or UI.",
   "license": "MIT",

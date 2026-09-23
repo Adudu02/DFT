@@ -40,27 +40,26 @@ jobs:
 
       # Publish in dependency order: core -> insights -> reporter -> root.
       # workspace:* references are resolved to the published versions by pnpm.
-      - name: Publish how-much-did-u-waste-core
-        run: pnpm --filter how-much-did-u-waste-core publish --access public --no-git-checks
+      # Prerelease tags (v0.0.2-beta, v1.0.0-rc.1...) publish under the npm
+      # dist-tag "beta" so "latest" stays clean.
+      - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish how-much-did-u-waste-insights
-        run: pnpm --filter how-much-did-u-waste-insights publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish how-much-did-u-waste-report
-        run: pnpm --filter how-much-did-u-waste-report publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Publish how-much-did-u-waste (CLI + dashboard)
-        run: pnpm publish --access public --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -eu
+          TAG_ARGS=""
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then TAG_ARGS="--tag beta"; fi
+          for pkg in how-much-did-u-waste-core how-much-did-u-waste-insights how-much-did-u-waste-report; do
+            pnpm --filter "$pkg" publish --access public $TAG_ARGS --no-git-checks
+          done
+          pnpm publish --access public $TAG_ARGS --no-git-checks
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --generate-notes --title "${GITHUB_REF_NAME}"
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" > /dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} already exists; skipping creation."
+          else
+            gh release create "${GITHUB_REF_NAME}" --generate-notes --title "${GITHUB_REF_NAME}"
+          fi
