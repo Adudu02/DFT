@@ -10,7 +10,7 @@ import {
   openDb,
   rootsFromConfig,
   type IngestSummary,
-} from "motor-agentico-core";
+} from "how-much-did-u-waste-core";
 import { unlink } from "node:fs/promises";
 import { loadConfig } from "./config.js";
 import { autoPricingCheck } from "./pricing-auto.js";

@@ -1,8 +1,8 @@
 {
-  "name": "motor-agentico-insights",
-  "version": "1.0.0",
+  "name": "how-much-did-u-waste-insights",
+  "version": "0.0.1",
   "type": "module",
-  "description": "Domain layer on top of motor-agentico-core: waste findings (token leaks), skills catalog, memory graph and user config. No server, no UI.",
+  "description": "Domain layer on top of how-much-did-u-waste-core: waste findings (token leaks), skills catalog, memory graph and user config. No server, no UI.",
   "license": "MIT",
   "author": "Adudu02",
   "repository": {
@@ -39,6 +39,6 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "motor-agentico-core": "workspace:*"
+    "how-much-did-u-waste-core": "workspace:*"
   }
 }

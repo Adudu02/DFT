@@ -21,10 +21,10 @@ importers:
       fastify:
         specifier: ^5.12.4
         version: 5.12.4
-      motor-agentico-core:
+      how-much-did-u-waste-core:
         specifier: workspace:*
         version: link:packages/core
-      motor-agentico-insights:
+      how-much-did-u-waste-insights:
         specifier: workspace:*
         version: link:packages/insights
     devDependencies:
@@ -101,16 +101,16 @@ importers:
 
   packages/insights:
     dependencies:
-      motor-agentico-core:
+      how-much-did-u-waste-core:
         specifier: workspace:*
         version: link:../core
 
   packages/reporter:
     dependencies:
-      motor-agentico-core:
+      how-much-did-u-waste-core:
         specifier: workspace:*
         version: link:../core
-      motor-agentico-insights:
+      how-much-did-u-waste-insights:
         specifier: workspace:*
         version: link:../insights
 

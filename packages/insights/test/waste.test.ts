@@ -3,9 +3,9 @@ import { mkdtempSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openDb, type DB } from "motor-agentico-core";
-import { ingestAll } from "motor-agentico-core";
-import { loadPricing } from "motor-agentico-core";
+import { openDb, type DB } from "how-much-did-u-waste-core";
+import { ingestAll } from "how-much-did-u-waste-core";
+import { loadPricing } from "how-much-did-u-waste-core";
 import { getWaste, DEFAULT_WASTE } from "../src/waste.js";
 
 const here = dirname(fileURLToPath(import.meta.url));

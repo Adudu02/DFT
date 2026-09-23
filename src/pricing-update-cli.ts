@@ -5,8 +5,8 @@
  *   pnpm pricing:update -- --json # salida machine-readable
  * Exit ≠ 0 ante fallo (red, fuente inválida); el archivo queda intacto.
  */
-import { runPricingUpdate } from "motor-agentico-core";
-import { ensureUserData } from "motor-agentico-core";
+import { runPricingUpdate } from "how-much-did-u-waste-core";
+import { ensureUserData } from "how-much-did-u-waste-core";
 
 const json = process.argv.includes("--json");
 ensureUserData();

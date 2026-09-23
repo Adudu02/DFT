@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_CONFIG, validateConfig } from "../src/config.js";
 import { __resetAutoPricingCheckForTests, autoPricingCheck } from "../src/pricing-auto.js";
-import type { PricingUpdateReport } from "motor-agentico-core";
+import type { PricingUpdateReport } from "how-much-did-u-waste-core";
 
 describe("config — bloque pricing", () => {
   it("defaults: maxAgeDays 7, autoUpdate true", () => {

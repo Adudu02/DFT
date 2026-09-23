@@ -5,7 +5,7 @@
  * conoce la config. Best-effort: máx. una vez por proceso, nunca bloquea la
  * ingesta y todo fallo degrada en silencio (offline sigue funcionando).
  */
-import { loadPricing, pricingAgeStatus, runPricingUpdate, type Pricing } from "motor-agentico-core";
+import { loadPricing, pricingAgeStatus, runPricingUpdate, type Pricing } from "how-much-did-u-waste-core";
 import type { Config } from "./config.js";
 
 let checkedThisSession = false;

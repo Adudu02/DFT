@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * motor-agentico-report — segundo consumidor de motor-agentico-core (sin
+ * how-much-did-u-waste-report — segundo consumidor de how-much-did-u-waste-core (sin
  * servidor ni UI). Ingiere (opcional) los transcripts, corre la detección de
  * fugas y emite un reporte legible o JSON. Con --threshold falla (exit 1) si el
  * desperdicio estimado lo supera, para gatear un PR/CI.
  *
- *   motor-agentico-report                       # reporte de la DB existente
- *   motor-agentico-report --ingest              # ingiere primero, luego reporta
- *   motor-agentico-report --data ./x --json     # estado en ./x, salida JSON
- *   motor-agentico-report --threshold 50        # exit 1 si fuga > $50
+ *   how-much-did-u-waste-report                       # reporte de la DB existente
+ *   how-much-did-u-waste-report --ingest              # ingiere primero, luego reporta
+ *   how-much-did-u-waste-report --data ./x --json     # estado en ./x, salida JSON
+ *   how-much-did-u-waste-report --threshold 50        # exit 1 si fuga > $50
  */
 import {
   defaultDbPath,
@@ -16,8 +16,8 @@ import {
   loadPricing,
   openDb,
   setDataDir,
-} from "motor-agentico-core";
-import { getWaste, loadConfig, rebuild } from "motor-agentico-insights";
+} from "how-much-did-u-waste-core";
+import { getWaste, loadConfig, rebuild } from "how-much-did-u-waste-insights";
 import { exceedsThreshold, parseArgs, type ReportResult, toJson, toText } from "./report.js";
 
 async function main(): Promise<void> {

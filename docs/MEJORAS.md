@@ -1,4 +1,4 @@
-# Motor Agéntico — Plan de Mejoras
+# How much did u waste? — Plan de Mejoras
 
 > ✅ **COMPLETADO — 2026-09-13.** Los 21 ítems de este plan fueron ejecutados y verificados
 > (cada uno con su change OpenSpec en `openspec/changes/archive/`). Este documento queda

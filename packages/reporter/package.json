@@ -1,8 +1,8 @@
 {
-  "name": "motor-agentico-report",
-  "version": "1.0.0",
+  "name": "how-much-did-u-waste-report",
+  "version": "0.0.1",
   "type": "module",
-  "description": "Token-waste reporter for CI/terminal: exit-code by threshold, second consumer of motor-agentico-core. No server, no UI.",
+  "description": "Token-waste reporter for CI/terminal: exit-code by threshold, second consumer of how-much-did-u-waste-core. No server, no UI.",
   "license": "MIT",
   "author": "Adudu02",
   "repository": {
@@ -23,7 +23,7 @@
     "report"
   ],
   "bin": {
-    "motor-agentico-report": "dist/index.js"
+    "how-much-did-u-waste-report": "dist/index.js"
   },
   "files": [
     "dist",
@@ -38,7 +38,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "motor-agentico-core": "workspace:*",
-    "motor-agentico-insights": "workspace:*"
+    "how-much-did-u-waste-core": "workspace:*",
+    "how-much-did-u-waste-insights": "workspace:*"
   }
 }

@@ -6,13 +6,13 @@
 set -e
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 APPS="$HOME/.local/share/applications"
-FILE="$APPS/motor-agentico.desktop"
+FILE="$APPS/how-much-did-u-waste.desktop"
 mkdir -p "$APPS"
 
 cat > "$FILE" <<EOF
 [Desktop Entry]
 Type=Application
-Name=Motor Agéntico
+Name=How much did u waste?
 Comment=Dashboard local de costos y actividad de agentes
 Exec=$REPO/start.sh
 Path=$REPO
@@ -25,6 +25,6 @@ echo "✓ Lanzador instalado: $FILE"
 
 if [ "$1" = "--autostart" ]; then
   mkdir -p "$HOME/.config/autostart"
-  cp "$FILE" "$HOME/.config/autostart/motor-agentico.desktop"
-  echo "✓ Autoarranque activado (quitalo con: rm ~/.config/autostart/motor-agentico.desktop)"
+  cp "$FILE" "$HOME/.config/autostart/how-much-did-u-waste.desktop"
+  echo "✓ Autoarranque activado (quitalo con: rm ~/.config/autostart/how-much-did-u-waste.desktop)"
 fi

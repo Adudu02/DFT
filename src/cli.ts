@@ -6,16 +6,16 @@
  *   pnpm cli -- <root>  # sobreescribe la raiz de projects de Claude Code
  *   pnpm cli -- --waste # imprime dónde se fugan tokens (todos los agentes)
  */
-import { ClaudeCodeAdapter } from "motor-agentico-core";
-import { CodexAdapter } from "motor-agentico-core";
-import { rootsFromConfig } from "motor-agentico-core";
-import { loadPricing, pricingAgeStatus } from "motor-agentico-core";
-import { aggregate, type Row } from "motor-agentico-core";
-import { openDb, defaultDbPath } from "motor-agentico-core";
-import { ingestAll } from "motor-agentico-core";
-import { getWaste, loadConfig, type WasteFinding } from "motor-agentico-insights";
-import { ensureUserData } from "motor-agentico-core";
-import type { NormalizedSession } from "motor-agentico-core";
+import { ClaudeCodeAdapter } from "how-much-did-u-waste-core";
+import { CodexAdapter } from "how-much-did-u-waste-core";
+import { rootsFromConfig } from "how-much-did-u-waste-core";
+import { loadPricing, pricingAgeStatus } from "how-much-did-u-waste-core";
+import { aggregate, type Row } from "how-much-did-u-waste-core";
+import { openDb, defaultDbPath } from "how-much-did-u-waste-core";
+import { ingestAll } from "how-much-did-u-waste-core";
+import { getWaste, loadConfig, type WasteFinding } from "how-much-did-u-waste-insights";
+import { ensureUserData } from "how-much-did-u-waste-core";
+import type { NormalizedSession } from "how-much-did-u-waste-core";
 
 interface Adapter {
   discoverSessions(): Promise<string[]>;

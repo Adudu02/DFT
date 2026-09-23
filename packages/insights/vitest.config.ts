@@ -7,7 +7,7 @@ const core = fileURLToPath(new URL("../core/src/index.ts", import.meta.url));
 // Cobertura de la capa de dominio (insights). Umbrales = baseline medido.
 export default defineConfig({
   resolve: {
-    alias: { "motor-agentico-core": core },
+    alias: { "how-much-did-u-waste-core": core },
   },
   test: {
     coverage: {

@@ -1,7 +1,7 @@
 /** Entry: borra ./data/motor.db y reingesta todo (PLAN §1.3, comando `rebuild`). */
-import { rebuild } from "motor-agentico-insights";
-import { writeReport } from "motor-agentico-core";
-import { ensureUserData } from "motor-agentico-core";
+import { rebuild } from "how-much-did-u-waste-insights";
+import { writeReport } from "how-much-did-u-waste-core";
+import { ensureUserData } from "how-much-did-u-waste-core";
 
 ensureUserData();
 const t0 = Date.now();

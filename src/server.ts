@@ -8,21 +8,21 @@ import fastifyStatic from "@fastify/static";
 import { fileURLToPath } from "node:url";
 import { join, dirname } from "node:path";
 import { existsSync } from "node:fs";
-import { openDb, defaultDbPath } from "motor-agentico-core";
-import { ensureUserData } from "motor-agentico-core";
-import { defaultProjectsRoot, ingestAll } from "motor-agentico-core";
-import { rootsFromConfig } from "motor-agentico-core";
-import { loadPricing, pricingAgeStatus, savePricing, type Pricing } from "motor-agentico-core";
-import { getSummary } from "motor-agentico-core";
-import { loadConfig, saveConfig, type Config } from "motor-agentico-insights";
-import { discoverCatalog, getSkills } from "motor-agentico-insights";
-import { scanMemory, syncMemoryNodes } from "motor-agentico-insights";
-import { autoPricingCheck } from "motor-agentico-insights";
-import { cacheFreshness, readQuotaCache, refreshQuota, defaultQuotaCachePath } from "motor-agentico-core";
-import { getActivityPage, getSessionDetail, getSessionTurns, searchPrompts } from "motor-agentico-core";
-import { getWaste } from "motor-agentico-insights";
-import { writeReport } from "motor-agentico-core";
-import { exportCsv, getExportData } from "motor-agentico-core";
+import { openDb, defaultDbPath } from "how-much-did-u-waste-core";
+import { ensureUserData } from "how-much-did-u-waste-core";
+import { defaultProjectsRoot, ingestAll } from "how-much-did-u-waste-core";
+import { rootsFromConfig } from "how-much-did-u-waste-core";
+import { loadPricing, pricingAgeStatus, savePricing, type Pricing } from "how-much-did-u-waste-core";
+import { getSummary } from "how-much-did-u-waste-core";
+import { loadConfig, saveConfig, type Config } from "how-much-did-u-waste-insights";
+import { discoverCatalog, getSkills } from "how-much-did-u-waste-insights";
+import { scanMemory, syncMemoryNodes } from "how-much-did-u-waste-insights";
+import { autoPricingCheck } from "how-much-did-u-waste-insights";
+import { cacheFreshness, readQuotaCache, refreshQuota, defaultQuotaCachePath } from "how-much-did-u-waste-core";
+import { getActivityPage, getSessionDetail, getSessionTurns, searchPrompts } from "how-much-did-u-waste-core";
+import { getWaste } from "how-much-did-u-waste-insights";
+import { writeReport } from "how-much-did-u-waste-core";
+import { exportCsv, getExportData } from "how-much-did-u-waste-core";
 
 const HOST = "127.0.0.1";
 const PORT = Number(process.env.PORT ?? 8081);
@@ -96,7 +96,7 @@ export async function buildServer(options: ServerOptions = {}) {
     }
     const data = getExportData(db);
     const extension = format === "csv" ? "csv" : "json";
-    reply.header("Content-Disposition", `attachment; filename="motor-agentico-${new Date().toISOString().slice(0, 10)}.${extension}"`);
+    reply.header("Content-Disposition", `attachment; filename="how-much-did-u-waste-${new Date().toISOString().slice(0, 10)}.${extension}"`);
     if (format === "csv") return reply.type("text/csv; charset=utf-8").send(exportCsv(data));
     return reply.type("application/json; charset=utf-8").send(data);
   });
@@ -277,7 +277,7 @@ export async function main() {
     }
     throw err;
   }
-  app.log.info({ event: "listening", host: HOST, port: PORT }, "Motor agentico escuchando");
+  app.log.info({ event: "listening", host: HOST, port: PORT }, "How much did u waste? escuchando");
 
   let closing = false;
   const close = async (signal: "SIGINT" | "SIGTERM") => {

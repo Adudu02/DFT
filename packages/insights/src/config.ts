@@ -5,8 +5,8 @@
  */
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { readFileRO } from "motor-agentico-core";
-import { dataDir } from "motor-agentico-core";
+import { readFileRO } from "how-much-did-u-waste-core";
+import { dataDir } from "how-much-did-u-waste-core";
 import { DEFAULT_WASTE, type WasteThresholds } from "./waste.js";
 
 export interface Config {

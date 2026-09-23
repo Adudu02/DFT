@@ -83,7 +83,7 @@ describe("ingestAll con Codex (codexRoot explícito)", () => {
   });
 
   it("asocia el uso de skill con Codex (fila en skills_usage, agente codex)", () => {
-    // La agregación/ahorro (getSkills) vive en motor-agentico-insights; en core
+    // La agregación/ahorro (getSkills) vive en how-much-did-u-waste-insights; en core
     // se verifica la medición: el uso quedó registrado con su agente.
     const row = db.prepare("SELECT session_id, kind FROM skills_usage WHERE skill = 'ponytail'").get() as {
       session_id: string;

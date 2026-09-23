@@ -12,7 +12,7 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { latestReport, hasFindings, type IngestReport } from "motor-agentico-core";
+import { latestReport, hasFindings, type IngestReport } from "how-much-did-u-waste-core";
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -24,7 +24,7 @@ function buildPrompt(reportPath: string, r: IngestReport): string {
   ].filter(Boolean);
 
   return [
-    "Eres un desarrollador senior mejorando el motor de ingesta de este repo (motor-agentico).",
+    "Eres un desarrollador senior mejorando el motor de ingesta de este repo (how-much-did-u-waste).",
     `Lee el último reporte de ingesta en ${reportPath}. Hallazgos:`,
     ...findings,
     "",

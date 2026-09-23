@@ -3,9 +3,9 @@ import { mkdtempSync, mkdirSync, writeFileSync, rmSync, unlinkSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { scanMemory } from "../src/memory.js";
-import { openDb } from "motor-agentico-core";
-import { ingestAll } from "motor-agentico-core";
-import { loadPricing } from "motor-agentico-core";
+import { openDb } from "how-much-did-u-waste-core";
+import { ingestAll } from "how-much-did-u-waste-core";
+import { loadPricing } from "how-much-did-u-waste-core";
 import { syncMemoryNodes } from "../src/memory_sync.js";
 
 let tmp: string;

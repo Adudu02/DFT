@@ -40,22 +40,22 @@ jobs:
 
       # Publish in dependency order: core -> insights -> reporter -> root.
       # workspace:* references are resolved to the published versions by pnpm.
-      - name: Publish motor-agentico-core
-        run: pnpm --filter motor-agentico-core publish --access public --no-git-checks
+      - name: Publish how-much-did-u-waste-core
+        run: pnpm --filter how-much-did-u-waste-core publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish motor-agentico-insights
-        run: pnpm --filter motor-agentico-insights publish --access public --no-git-checks
+      - name: Publish how-much-did-u-waste-insights
+        run: pnpm --filter how-much-did-u-waste-insights publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish motor-agentico-report
-        run: pnpm --filter motor-agentico-report publish --access public --no-git-checks
+      - name: Publish how-much-did-u-waste-report
+        run: pnpm --filter how-much-did-u-waste-report publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish motor-agentico (CLI + dashboard)
+      - name: Publish how-much-did-u-waste (CLI + dashboard)
         run: pnpm publish --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -8,10 +8,10 @@ Release with auto-generated notes.
 
 | npm package | Role |
 |---|---|
-| `motor-agentico-core` | Engine: adapters, ingest, metrics-only SQLite, costing |
-| `motor-agentico-insights` | Domain layer: waste, skills, memory, config |
-| `motor-agentico-report` | CI/terminal waste reporter (exit-code by threshold) |
-| `motor-agentico` | The dashboard + CLI (`npx motor-agentico`) |
+| `how-much-did-u-waste-core` | Engine: adapters, ingest, metrics-only SQLite, costing |
+| `how-much-did-u-waste-insights` | Domain layer: waste, skills, memory, config |
+| `how-much-did-u-waste-report` | CI/terminal waste reporter (exit-code by threshold) |
+| `how-much-did-u-waste` | The dashboard + CLI (`npx how-much-did-u-waste`) |
 
 `workspace:*` dependencies are resolved to concrete versions by `pnpm publish`
 at publish time; all four versions are bumped together.
@@ -31,7 +31,7 @@ at publish time; all four versions are bumped together.
 # 2. Commit, then tag with the same version and push:
 git tag v1.0.0
 git push origin v1.0.0
-# 3. Watch .github/workflows/release.yml; verify at https://www.npmjs.com/package/motor-agentico
+# 3. Watch .github/workflows/release.yml; verify at https://www.npmjs.com/package/how-much-did-u-waste
 ```
 
 If a publish fails mid-way, re-run only the missing packages manually with

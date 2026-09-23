@@ -3,9 +3,9 @@ import { readFileSync, mkdtempSync, mkdirSync, copyFileSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseSkillUsages } from "motor-agentico-core";
-import { openDb, type DB } from "motor-agentico-core";
-import { ingestAll } from "motor-agentico-core";
+import { parseSkillUsages } from "how-much-did-u-waste-core";
+import { openDb, type DB } from "how-much-did-u-waste-core";
+import { ingestAll } from "how-much-did-u-waste-core";
 import { discoverCatalog, getSkills, type CatalogEntry } from "../src/skills.js";
 import { loadConfig, saveConfig, DEFAULT_CONFIG, type Config } from "../src/config.js";
 
@@ -49,7 +49,7 @@ describe("ingest + getSkills", () => {
   async function seed(): Promise<DB> {
     const db = openDb(join(tmp, "motor.db"));
     // pricing default del repo
-    const { loadPricing } = await import("motor-agentico-core");
+    const { loadPricing } = await import("how-much-did-u-waste-core");
     await ingestAll(db, { projectsRoot: tmp, pricing: await loadPricing() });
     return db;
   }
@@ -57,7 +57,7 @@ describe("ingest + getSkills", () => {
   it("skills_usage no se duplica en re-ingesta", async () => {
     const db = await seed();
     const before = (db.prepare("SELECT COUNT(*) AS n FROM skills_usage").get() as { n: number }).n;
-    const { loadPricing } = await import("motor-agentico-core");
+    const { loadPricing } = await import("how-much-did-u-waste-core");
     await ingestAll(db, { projectsRoot: tmp, pricing: await loadPricing() });
     const after = (db.prepare("SELECT COUNT(*) AS n FROM skills_usage").get() as { n: number }).n;
     expect(after).toBe(before);

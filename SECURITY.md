@@ -1,6 +1,6 @@
 # Security Policy
 
-Motor Agéntico reads agent transcripts (Claude Code, Codex, Qwen) that may
+How much did u waste? reads agent transcripts (Claude Code, Codex, Qwen) that may
 contain sensitive information. Security isn't an add-on: it's the reason the
 tool is viable to run against real data. This document states what the design
 guarantees, how the dependency tree is structured, and how to report an issue.
@@ -31,8 +31,8 @@ guarantees, how the dependency tree is structured, and how to report an issue.
 ## Dependencies
 
 Minimal attack surface by design: **three external production dependencies in
-total**, split by layer. The app (`motor-agentico`) uses `fastify` +
-`@fastify/static` and depends on the engine; the engine (`motor-agentico-core`,
+total**, split by layer. The app (`how-much-did-u-waste`) uses `fastify` +
+`@fastify/static` and depends on the engine; the engine (`how-much-did-u-waste-core`,
 a workspace package) uses only `better-sqlite3`. Everything else is build/test
 tooling (`vite`, `vitest`, `tailwind`…) that is **not part of the runtime**
 (`pnpm serve` serves the already-built `dist` through Fastify).

@@ -6,8 +6,8 @@
  * Los datos vencidos se marcan stale con edad; nunca se agregan entre
  * modelos/ventanas. Estados: live | stale | error | no-credential.
  */
-import { cacheFreshness, readQuotaCache, refreshQuota } from "motor-agentico-core";
-import { loadConfig } from "motor-agentico-insights";
+import { cacheFreshness, readQuotaCache, refreshQuota } from "how-much-did-u-waste-core";
+import { loadConfig } from "how-much-did-u-waste-insights";
 
 const json = process.argv.includes("--json");
 const refresh = process.argv.includes("--refresh");

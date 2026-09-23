@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildServer } from "../src/server.js";
-import { DEFAULT_CONFIG } from "motor-agentico-insights";
+import { DEFAULT_CONFIG } from "how-much-did-u-waste-insights";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (name: string) => join(here, "..", "packages", "core", "test", "fixtures", name);
@@ -70,7 +70,7 @@ describe("HTTP contracts", () => {
     expect(await server.app.inject({ method: "GET", url: "/api/activity/search?q=x" })).toMatchObject({ statusCode: 400 });
 
     const json = await server.app.inject({ method: "GET", url: "/api/export?format=json" });
-    expect(json.headers["content-disposition"]).toContain("motor-agentico-");
+    expect(json.headers["content-disposition"]).toContain("how-much-did-u-waste-");
     expect(json.json().sessions[0].id).toBe("s1");
     expect(json.body).not.toContain("prompt");
     const csv = await server.app.inject({ method: "GET", url: "/api/export?format=csv" });

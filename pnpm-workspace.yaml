@@ -8,7 +8,7 @@ overrides:
   nanoid@<3.3.18: ">=3.3.18"
 minimumReleaseAgeExclude:
   - fastify@5.12.0
-# Monorepo: app en la raíz + packages/core (motor-agentico-core). onlyBuiltDependencies
+# Monorepo: app en la raíz + packages/core (how-much-did-u-waste-core). onlyBuiltDependencies
 # permite el build nativo de esbuild (Vite) y better-sqlite3, bloqueados por defecto.
 onlyBuiltDependencies:
   - esbuild

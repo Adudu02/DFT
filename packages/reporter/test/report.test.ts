@@ -1,4 +1,4 @@
-import type { WasteFinding } from "motor-agentico-core";
+import type { WasteFinding } from "how-much-did-u-waste-core";
 import { describe, expect, it } from "vitest";
 import { exceedsThreshold, type ReportResult, parseArgs, toJson, toText } from "../src/report.js";
 

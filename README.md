@@ -66,12 +66,12 @@ never rewrites the source transcripts.
 ## Try it (no clone needed)
 
 ```bash
-npx motor-agentico
+npx how-much-did-u-waste
 ```
 
 Serves the dashboard at `http://127.0.0.1:8081`. It detects your transcripts
 (Claude Code, Codex, Qwen) read-only and writes its state to `./data` in the
-directory where you run it. Terminal waste report: `npx motor-agentico --waste`.
+directory where you run it. Terminal waste report: `npx how-much-did-u-waste --waste`.
 
 ## Quick start (from the repo)
 
@@ -117,7 +117,7 @@ then **Rebuild**. See the **Help** page in the UI.
 - **No network.** The server binds to `127.0.0.1:8081` only, no auth. Don't
   expose it to the LAN or behind a public proxy.
 - **Minimal dependency tree:** the app uses `fastify` + `@fastify/static` +
-  `motor-agentico-core`; the engine only `better-sqlite3`. `pnpm audit` is clean
+  `how-much-did-u-waste-core`; the engine only `better-sqlite3`. `pnpm audit` is clean
   at runtime and dev. Threat model, dependency posture and disclosure in
   [`SECURITY.md`](SECURITY.md).
 
@@ -204,20 +204,20 @@ The engine ships as two workspace packages with a one-way dependency
 (`insights → core`), so you can reuse token measurement without inheriting this
 dashboard's opinions:
 
-- **`motor-agentico-core` — Tier 1: generic measurement.** Adapters (Claude
+- **`how-much-did-u-waste-core` — Tier 1: generic measurement.** Adapters (Claude
   Code, Codex, Qwen), incremental ingest, metrics-only SQLite, API-equivalent
   costing and aggregate views. If you want to measure token usage from any
   dashboard, harness or backend, this is all you need:
 
   ```ts
-  import { setDataDir, rebuild, openDb, defaultDbPath, getSummary } from "motor-agentico-core";
+  import { setDataDir, rebuild, openDb, defaultDbPath, getSummary } from "how-much-did-u-waste-core";
 
   setDataDir("/path/for/state"); // DB + reports live here (default: <cwd>/data)
   await rebuild();
   const summary = getSummary(openDb(defaultDbPath()));
   ```
 
-- **`motor-agentico-insights` — Tier 2: this dashboard's domain.** Waste
+- **`how-much-did-u-waste-insights` — Tier 2: this dashboard's domain.** Waste
   findings (leak detection with configurable thresholds), the skills catalog,
   the Claude Code memory graph, the user `config.json`, and the `rebuild`
   orchestrator that combines ingest + memory sync. Add it only if you want

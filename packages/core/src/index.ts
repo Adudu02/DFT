@@ -1,11 +1,11 @@
 /**
- * API pública del paquete motor-agentico-core. Un consumidor —el dashboard de
+ * API pública del paquete how-much-did-u-waste-core. Un consumidor —el dashboard de
  * este repo, un check de CI, otra app— importa TODO desde aquí, no de rutas
  * internas. El motor no conoce Fastify, React ni el CLI; solo lee fuentes
  * (solo-lectura), calcula costos equiv-API, detecta fugas y persiste métricas.
  *
  * Uso como librería:
- *   import { setDataDir, rebuild, getWaste, openDb, defaultDbPath } from "motor-agentico-core";
+ *   import { setDataDir, rebuild, getWaste, openDb, defaultDbPath } from "how-much-did-u-waste-core";
  *   setDataDir("/ruta/estado");          // dónde vive la DB/reportes (default: <cwd>/data)
  *   await rebuild();                      // ingiere todas las fuentes
  *   const { findings } = getWaste(openDb(defaultDbPath()), ...);
@@ -38,7 +38,7 @@ export * from "./quota/probers.js";
 export * from "./quota/refresh.js";
 
 // IO de solo lectura: política de seguridad del motor, reutilizable por los
-// consumidores y por la capa de dominio (motor-agentico-insights).
+// consumidores y por la capa de dominio (how-much-did-u-waste-insights).
 export * from "./lib/fs-readonly.js";
 export * from "./lib/sqlite-snapshot.js";
 
@@ -54,7 +54,7 @@ export * from "./lib/report.js";
  * TIER 2 — dominio del dashboard (NO vive en este paquete):
  *   config (tarifa/hora, agentPaths), waste (hallazgos de fuga), skills
  *   (catálogo) y memory (grafo de Claude Code) viven en
- *   `motor-agentico-insights`, junto con el orquestador `rebuild` que combina
+ *   `how-much-did-u-waste-insights`, junto con el orquestador `rebuild` que combina
  *   ingesta + memoria. Este paquete es la medición genérica; si solo querés
  *   medir tokens, no necesitás insights.
  */

@@ -1,4 +1,4 @@
-import type { DB } from "motor-agentico-core";
+import type { DB } from "how-much-did-u-waste-core";
 import { scanMemory } from "./memory.js";
 
 /** Crea la tabla de insights si falta (idempotente; salió del schema de core). */

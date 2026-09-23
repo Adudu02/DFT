@@ -1,9 +1,9 @@
 /**
  * Formateo y decisión de exit-code del reporter. Puro (sin IO): el motor
- * (motor-agentico-core) produce los hallazgos; aquí solo se presentan y se
+ * (how-much-did-u-waste-core) produce los hallazgos; aquí solo se presentan y se
  * decide si el CI debe fallar.
  */
-import type { WasteFinding } from "motor-agentico-insights";
+import type { WasteFinding } from "how-much-did-u-waste-insights";
 
 export interface ReportResult {
   totalEstUsd: number;

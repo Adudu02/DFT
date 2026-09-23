@@ -1,4 +1,4 @@
-# Motor Agéntico — Implementation Plan (consolidated)
+# How much did u waste? — Implementation Plan (consolidated)
 
 > ✅ **COMPLETADO — 2026-09-16.** Los tres workstreams de este plan fueron implementados y
 > archivados en OpenSpec: **A** (10/10 adapters: Claude Code, Codex, Qwen, ZCode, Gemini CLI,

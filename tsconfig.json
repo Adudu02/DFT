@@ -17,10 +17,10 @@
     "skipLibCheck": true,
     "noEmit": true,
     "paths": {
-      "motor-agentico-core": [
+      "how-much-did-u-waste-core": [
         "./packages/core/src/index.ts"
       ],
-      "motor-agentico-insights": [
+      "how-much-did-u-waste-insights": [
         "./packages/insights/src/index.ts"
       ]
     }
