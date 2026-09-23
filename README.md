@@ -1,6 +1,6 @@
 # How much did u waste? · v0.0.2-beta
 
-[![CI](https://github.com/Adudu02/DFT/actions/workflows/ci.yml/badge.svg)](https://github.com/Adudu02/DFT/actions/workflows/ci.yml)
+[![CI](https://github.com/Adudu02/How-much-did-U-waste/actions/workflows/ci.yml/badge.svg)](https://github.com/Adudu02/How-much-did-U-waste/actions/workflows/ci.yml)
 
 A local-first cost & activity dashboard for coding agents. It reads Claude Code
 (`~/.claude/projects`), Codex (`~/.codex`) and Qwen (`~/.qwen/usage`) transcripts
