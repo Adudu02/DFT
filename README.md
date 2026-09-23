@@ -163,6 +163,11 @@ pnpm typecheck      # tsc --noEmit
   [`openspec/specs/`](openspec/specs/) (5 capabilities), maintained through the
   OpenSpec workflow; every change lands with its proposal, spec delta, design
   and task list archived under `openspec/changes/archive/`.
+- **Only-Spanish** `for the moment` It is currently in my native language (Spanish);
+  I will soon add an English translation as an option, and the goal is to include
+  other languages ​​as well. However,
+  this work requires oversight, as AI can make mistakes when translating.
+- At the same time, Im open to contributions.
 
 ### Milestones
 
