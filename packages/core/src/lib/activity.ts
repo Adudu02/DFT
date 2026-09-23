@@ -187,6 +187,7 @@ export async function searchPrompts(
   const results: PromptSearchResult[] = [];
   for (const session of sessions) {
     if (results.length >= max) break;
+    if (isBinarySource(session.path)) continue; // OpenCode: no es un transcript JSONL
     // Streaming línea a línea (solo lectura): nunca carga el transcript completo.
     const input = createReadStream(session.path, { encoding: "utf8" });
     const rl = createInterface({ input, crlfDelay: Infinity });
@@ -256,7 +257,15 @@ function cleanPrompt(raw: string): string {
   return t.length > MAX_PROMPT_CHARS ? `${t.slice(0, MAX_PROMPT_CHARS)}…` : t;
 }
 
-/** Prompt de usuario en UNA línea de transcript (Claude Code o Codex), o null. */
+/**
+ * Prompt de usuario en UNA línea de transcript (Claude Code o Codex), o null.
+ * Codex tiene dos formatos según versión: el legado `event_msg/user_message`
+ * y el actual `response_item` con `payload.message` (role=user, bloques
+ * `input_text`). Los bloques de contexto inyectado (AGENTS.md, environment)
+ * se descartan: no son prompts del usuario.
+ */
+const INJECTED_CONTEXT = /^(#\s*AGENTS\.md instructions|<environment_context>|<user_instructions>|<ENVIRONMENT_CONTEXT>)/i;
+
 function promptFromLine(line: string): { ts: string; prompt: string } | null {
   const t = line.trim();
   if (!t) return null;
@@ -270,7 +279,15 @@ function promptFromLine(line: string): { ts: string; prompt: string } | null {
   if (o.type === "user") {
     text = claudeUserText(o.message?.content); // Claude Code
   } else if (o.type === "event_msg" && o.payload?.type === "user_message") {
-    text = typeof o.payload.message === "string" ? o.payload.message : null; // Codex
+    text = typeof o.payload.message === "string" ? o.payload.message : null; // Codex legado
+  } else if (o.type === "response_item" && o.payload?.type === "message" && o.payload?.role === "user") {
+    const blocks: any[] = Array.isArray(o.payload.content) ? o.payload.content : [];
+    text =
+      blocks
+        .map((b) => (b?.type === "input_text" && typeof b.text === "string" ? b.text : null))
+        .filter((s): s is string => s !== null)
+        .filter((s) => !INJECTED_CONTEXT.test(s.trimStart()))
+        .join("\n") || null; // Codex actual (2026+)
   }
   if (!text) return null;
   const prompt = cleanPrompt(text);
@@ -288,6 +305,11 @@ function extractPrompts(raw: string): { ts: string; prompt: string }[] {
   return out;
 }
 
+/** Fuentes que no son transcripts JSONL (p.ej. el opencode.db de OpenCode). */
+function isBinarySource(path: string): boolean {
+  return /\.(db|sqlite|sqlite3)$/i.test(path);
+}
+
 /**
  * Turnos de una sesión: cada prompt del usuario con su hora y lo que costaron
  * las respuestas hasta el siguiente prompt. Lee el transcript en SOLO LECTURA;
@@ -303,6 +325,7 @@ export async function getSessionTurns(
     | undefined;
   if (!row) return null;
   if (!row.path) return []; // sesión ingerida antes de guardar la ruta => rebuild
+  if (isBinarySource(row.path)) return []; // fuente no-JSONL (OpenCode): sin prompts por diseño
 
   let raw: string;
   try {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, mkdirSync, copyFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, copyFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -134,6 +134,52 @@ describe("getSessionTurns — parsing real de prompts", () => {
     // "os" está en "costos" (prompt 1) y en "los tests" (prompt 2)
     const results = await searchPrompts(db2, "os");
     expect(results.filter((r) => r.id === "prompts")).toHaveLength(2);
+  });
+});
+
+describe("getSessionTurns — Codex formato actual (response_item)", () => {
+  let tmpC: string;
+  let dbC: DB;
+  beforeEach(() => {
+    tmpC = mkdtempSync(join(tmpdir(), "motor-codex-"));
+    copyFileSync(fx("codex-prompts.jsonl"), join(tmpC, "rollout.jsonl"));
+    dbC = openDb(join(tmpC, "motor.db"));
+    dbC
+      .prepare(
+        "INSERT INTO sessions (id, agent, project, started_at, ended_at, turns, source_path) VALUES (?, 'codex', 'cx', ?, ?, 2, ?)",
+      )
+      .run("cx", "2026-09-20T10:00:00.000Z", "2026-09-20T10:05:00.000Z", join(tmpC, "rollout.jsonl"));
+  });
+  afterEach(() => {
+    dbC.close();
+    rmSync(tmpC, { recursive: true, force: true });
+  });
+
+  it("extrae prompts input_text y el legado user_message; descarta AGENTS.md y assistant", async () => {
+    const turns = (await getSessionTurns(dbC, "cx", "UTC"))!;
+    expect(turns.map((t) => t.prompt)).toEqual([
+      "por qué falla el deploy en staging",
+      "formato legado: revisa los logs",
+    ]);
+  });
+
+  it("searchPrompts encuentra texto del formato actual", async () => {
+    const results = await searchPrompts(dbC, "staging");
+    expect(results).toHaveLength(1);
+    expect(results[0].prompt).toContain("staging");
+  });
+
+  it("sesiones con fuente binaria (OpenCode .db) se saltan sin leer el archivo", async () => {
+    const binPath = join(tmpC, "opencode.db");
+    writeFileSync(binPath, "binary-not-jsonl");
+    dbC
+      .prepare(
+        "INSERT INTO sessions (id, agent, project, started_at, ended_at, turns, source_path) VALUES (?, 'opencode', 'oc', ?, ?, 0, ?)",
+      )
+      .run("oc", "2026-09-20T11:00:00.000Z", "2026-09-20T11:00:00.000Z", binPath);
+    expect(await getSessionTurns(dbC, "oc", "UTC")).toEqual([]);
+    const results = await searchPrompts(dbC, "binary-not-jsonl");
+    expect(results).toHaveLength(0); // jamás leyó el binario
   });
 });
 

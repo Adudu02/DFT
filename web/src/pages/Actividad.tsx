@@ -58,7 +58,7 @@ function SessionDrill({ id }: { id: string }) {
       )}
       {turns && turns.length === 0 && (
         <div className="mt-2 text-term-muted" style={{ fontSize: 10 }}>
-          (sin prompts legibles — si la sesión es vieja, corré Rebuild)
+          (sin prompts legibles — OpenCode no expone prompts por turno; si la sesión es muy vieja, corré Rebuild)
         </div>
       )}
     </div>
