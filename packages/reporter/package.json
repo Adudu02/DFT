@@ -1,6 +1,6 @@
 {
   "name": "how-much-did-u-waste-report",
-  "version": "0.0.2-beta",
+  "version": "0.0.3-beta",
   "type": "module",
   "description": "Token-waste reporter for CI/terminal: exit-code by threshold, second consumer of how-much-did-u-waste-core. No server, no UI.",
   "license": "MIT",

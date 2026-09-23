@@ -1,6 +1,6 @@
 {
   "name": "how-much-did-u-waste",
-  "version": "0.0.2-beta",
+  "version": "0.0.3-beta",
   "type": "module",
   "license": "MIT",
   "description": "Local-first, read-only cost & activity dashboard for coding agents (Claude Code, Codex, Qwen): API-equivalent spend, token-leak detection, skills and memory. Binds to 127.0.0.1 only.",
