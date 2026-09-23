@@ -33,3 +33,6 @@ coverage/
 # Artefactos generados del diagrama de arquitectura (la fuente .architecture.json sí se versiona)
 docs/dft-architecture.html
 docs/dft-architecture.visual-check.*
+
+# Tarballs de release (artefactos locales)
+release/

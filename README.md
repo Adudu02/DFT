@@ -65,11 +65,10 @@ never rewrites the source transcripts.
 
 ## Try it (no clone needed)
 
-> **Note:** the npm package is not on the registry yet — the first publish is
-> pending. Until it lands, use the quick start below.
+The package is not on the npm registry yet — install it straight from the GitHub release (the tarball bundles everything of ours; only public dependencies come from npm):
 
 ```bash
-npx how-much-did-u-waste
+npx https://github.com/Adudu02/How-much-did-U-waste/releases/download/v0.0.2-beta/how-much-did-u-waste-0.0.2-beta.tgz
 ```
 
 Serves the dashboard at `http://127.0.0.1:8081`. It detects your transcripts
