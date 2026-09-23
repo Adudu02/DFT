@@ -1,19 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { refreshAll } from "../hooks.js";
 import { REFRESH_MS } from "../constants.js";
 
 export function RefreshControl() {
   const [auto, setAuto] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [last, setLast] = useState<Date | null>(null);
-  const [ago, setAgo] = useState(0);
-
-  const run = async () => {
+  const run = useCallback(async () => {
     setBusy(true);
     await refreshAll();
-    setLast(new Date());
     setBusy(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (!auto) return;
@@ -21,17 +17,9 @@ export function RefreshControl() {
     return () => clearInterval(id);
   }, [auto, run]);
 
-  useEffect(() => {
-    const id = setInterval(() => setAgo((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, []);
-  useEffect(() => setAgo(0), []);
-
   return (
     <div className="flex items-center gap-2 text-xs whitespace-nowrap md:flex-col md:items-stretch md:gap-2">
-      <span className="text-term-muted md:text-[11px]">
-        {busy ? "actualizando…" : last ? `hace ${ago}s` : "sin refrescar"}
-      </span>
+      {busy && <span className="text-term-muted md:text-[11px]">actualizando…</span>}
       <div className="flex items-center gap-2">
         <button type="button"
           onClick={run}
