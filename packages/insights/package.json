@@ -1,6 +1,6 @@
 {
   "name": "how-much-did-u-waste-insights",
-  "version": "0.0.3-beta",
+  "version": "0.0.4-beta",
   "type": "module",
   "description": "Domain layer on top of how-much-did-u-waste-core: waste findings (token leaks), skills catalog, memory graph and user config. No server, no UI.",
   "license": "MIT",

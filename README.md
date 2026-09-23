@@ -1,4 +1,4 @@
-# How much did u waste? · v0.0.3-beta
+# How much did u waste? · v0.0.4-beta
 
 [![CI](https://github.com/Adudu02/How-much-did-U-waste/actions/workflows/ci.yml/badge.svg)](https://github.com/Adudu02/How-much-did-U-waste/actions/workflows/ci.yml)
 
@@ -68,7 +68,7 @@ never rewrites the source transcripts.
 The package is not on the npm registry yet — install it straight from the GitHub release (the tarball bundles everything of ours; only public dependencies come from npm):
 
 ```bash
-npx https://github.com/Adudu02/How-much-did-U-waste/releases/download/v0.0.3-beta/how-much-did-u-waste-0.0.3-beta.tgz
+npx https://github.com/Adudu02/How-much-did-U-waste/releases/download/v0.0.4-beta/how-much-did-u-waste-0.0.4-beta.tgz
 ```
 
 Serves the dashboard at `http://127.0.0.1:8081`. It detects your transcripts
