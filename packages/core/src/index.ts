@@ -25,6 +25,7 @@ export * from "./ingest.js";
 
 // Persistencia (métricas, nunca prompts).
 export * from "./lib/db.js";
+export { dayInTz } from "./lib/time.js";
 
 // Tarifas del usuario + actualizador desde fuente curada (LiteLLM).
 export * from "./lib/pricing.js";

@@ -32,13 +32,19 @@ describe("getIngestAdapters — parseSkills por adapter", () => {
   it("el adapter Qwen expone el parser real de skills (no el stub vacío)", () => {
     // Regla de aislamiento: override de claudeRoot + qwenRoot explícito => incluye Qwen
     const adapters = getIngestAdapters({ claudeRoot: "/fixtures", qwenRoot: "/qwen" });
-    const qwen = adapters.find((a) => a.id === "qwen");
-    expect(qwen).toBeDefined();
+    const qwenChats = adapters.find((a) => a.id === "qwen" && a.skillsOnly);
+    const qwenUsage = adapters.find((a) => a.id === "qwen" && !a.skillsOnly);
+    expect(qwenChats).toBeDefined();
 
     const raw =
       '{"type":"user","timestamp":"2026-08-05T19:00:00Z","message":{"parts":[{"text":"/review este código"}]}}\n';
-    const skills = qwen?.parseSkills(raw, 0);
+    const skills = qwenChats?.parseSkills(raw, 0);
     expect(skills).toHaveLength(1);
     expect(skills[0].skill).toBe("review");
+    expect(qwenUsage?.parseSkills(raw, 0)).toEqual([]);
+    const withMetadata = '{"sessionId":"session-aaa-111","cwd":"/work/demo"}\n' + raw;
+    expect(qwenChats?.deriveIds("/qwen/chats/file-id.jsonl", withMetadata)).toEqual({ sessionId: "session-aaa-111", project: "demo" });
+    expect(qwenChats?.deriveIds("/qwen/chats/file-id.jsonl", "{}\n")).toEqual({ sessionId: "file-id", project: "qwen" });
+    expect(qwenChats?.parseLines(`${raw}\n`, 0, "ignored").lineCount).toBe(2);
   });
 });

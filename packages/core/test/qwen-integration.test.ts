@@ -4,7 +4,7 @@
  * sesión→proyecto y skills en DB (el wiring real del registry, no un stub).
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, appendFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, copyFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -15,10 +15,8 @@ import { loadPricing } from "../src/lib/pricing.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (name: string) => join(here, "fixtures", name);
 
-// Línea de mensaje de usuario con uso de skill: no produce eventos de uso,
-// pero parseSkills (vía registry) debe capturarla. Así se ven transcripts reales.
 const SKILL_LINE =
-  '{"type":"user","timestamp":"2026-09-01T10:00:00Z","message":{"parts":[{"text":"/review este código"}]}}\n';
+  '{"type":"user","sessionId":"session-aaa-111","cwd":"/home/user/qwen-project","timestamp":"2026-09-01T10:00:00Z","message":{"parts":[{"text":"/review este código"}]}}\n';
 
 describe("ingestAll — integración Qwen", () => {
   let tmp: string;
@@ -28,7 +26,6 @@ describe("ingestAll — integración Qwen", () => {
     tmp = mkdtempSync(join(tmpdir(), "motor-qwen-int-"));
     mkdirSync(join(tmp, "qwen", "usage"), { recursive: true });
     copyFileSync(fx("qwen-usage.jsonl"), join(tmp, "qwen", "usage", "token-usage-2026-08.jsonl"));
-    appendFileSync(join(tmp, "qwen", "usage", "token-usage-2026-08.jsonl"), SKILL_LINE);
     // Solo session-aaa-111 está mapeada; session-bbb-222 debe caer a "qwen".
     writeFileSync(
       join(tmp, "qwen", "usage_record.jsonl"),
@@ -42,19 +39,21 @@ describe("ingestAll — integración Qwen", () => {
     rmSync(tmp, { recursive: true, force: true });
   });
 
-  it("ingiere sesiones, eventos y skills desde usage files", async () => {
-    const summary = await ingestAll(db, {
+  it("ingiere skills desde chats sin alterar sesiones ni eventos de usage", async () => {
+    const opts = {
       // Raíces inexistentes en tmp: los adapters devuelven [] sin fallar (aislamiento).
       projectsRoot: join(tmp, "claude-inexistente"),
       codexRoot: join(tmp, "codex-inexistente"),
       qwenRoot: join(tmp, "qwen"),
       pricing: await loadPricing(),
-    });
+    };
+    await ingestAll(db, opts);
 
-    const sessions = db.prepare("SELECT id, project, agent FROM sessions ORDER BY id").all() as {
+    const sessions = db.prepare("SELECT id, project, agent, source_path FROM sessions ORDER BY id").all() as {
       id: string;
       project: string;
       agent: string;
+      source_path: string;
     }[];
     expect(sessions).toHaveLength(2);
     expect(sessions.find((s) => s.id === "session-aaa-111")).toMatchObject({ project: "mi-proj", agent: "qwen" });
@@ -62,19 +61,40 @@ describe("ingestAll — integración Qwen", () => {
     // usage file heredan el mapeo de su primera fila (bbb no cae a "qwen" aquí).
     expect(sessions.find((s) => s.id === "session-bbb-222")).toMatchObject({ project: "mi-proj", agent: "qwen" });
 
-    // Los 3 eventos del fixture; la línea de skill no genera eventos.
+    // Los 3 eventos del fixture de uso.
     const events = db
       .prepare("SELECT dedup_key FROM usage_events WHERE session_id LIKE 'session-%'")
       .all() as { dedup_key: string }[];
     expect(events).toHaveLength(3);
 
-    // El circuito completo registry → parseSkills → DB.
+    const eventCount = events.length;
+    const usagePath = join(tmp, "qwen", "usage", "token-usage-2026-08.jsonl");
+    expect(sessions.find((s) => s.id === "session-aaa-111")?.source_path).toBe(usagePath);
+
+    const chats = join(tmp, "qwen", "projects", "hash1", "chats");
+    mkdirSync(chats, { recursive: true });
+    const chatPath = join(chats, "session-aaa-111.jsonl");
+    writeFileSync(chatPath, SKILL_LINE);
+    writeFileSync(join(chats, "session-aaa-111.runtime.json"), SKILL_LINE);
+    const summary = await ingestAll(db, opts);
+
+    expect(db.prepare("SELECT path FROM ingest_offsets WHERE path LIKE '%runtime.json'").all()).toEqual([]);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM usage_events").get()).toMatchObject({ n: eventCount });
+    expect(db.prepare("SELECT source_path FROM sessions WHERE id = ?").get("session-aaa-111")).toEqual({ source_path: usagePath });
     expect(summary.skillsInserted).toBeGreaterThanOrEqual(1);
-    const skills = db.prepare("SELECT skill, session_id FROM skills_usage").all() as {
+    const skills = db.prepare("SELECT skill, session_id, ts, kind FROM skills_usage").all() as {
       skill: string;
       session_id: string;
+      ts: string;
+      kind: string;
     }[];
-    expect(skills).toContainEqual({ skill: "review", session_id: "session-aaa-111" });
+    expect(skills).toContainEqual({ skill: "review", session_id: "session-aaa-111", ts: "2026-09-01T10:00:00Z", kind: "command" });
+    expect(skills).toHaveLength(1);
+
+    const second = await ingestAll(db, opts);
+    expect(second.eventsInserted).toBe(0);
+    expect(second.skillsInserted ?? 0).toBe(0);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM skills_usage").get()).toMatchObject({ n: 1 });
   });
 
   it("la reingesta es incremental (dedup por dedup_key)", async () => {

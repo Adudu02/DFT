@@ -28,6 +28,7 @@ import {
   loadQwenSessionProjectMap,
   deriveQwenIdsFromUsage,
   parseQwenSkills,
+  discoverQwenChats,
 } from "./qwen.js";
 import {
   defaultZcodeRoot,
@@ -66,6 +67,8 @@ export interface IngestAdapter {
    * El pipeline de ingesta creará entradas en sessions para cada sessionId único encontrado.
    */
   multiSession?: boolean;
+  /** El archivo solo aporta skills y offsets; no es dueño de sesiones/eventos. */
+  skillsOnly?: true;
 }
 
 function claudeAdapter(root: string): IngestAdapter {
@@ -112,8 +115,31 @@ function qwenAdapter(root: string): IngestAdapter {
       // Para Qwen, los events tienen su propio sessionId del usage file
       return parseQwenUsageLines(raw, sessionMap, fromLine);
     },
-    parseSkills: (raw, fromLine) => parseQwenSkills(raw, fromLine),
+    parseSkills: () => [],
     multiSession: true, // Los usage files contienen múltiples sesiones
+  };
+}
+
+function qwenChatsAdapter(root: string): IngestAdapter {
+  return {
+    id: "qwen",
+    discover: () => discoverQwenChats(root),
+    deriveIds: (path, raw) => {
+      const firstLine = raw.split("\n", 1)[0];
+      let first: Record<string, unknown> = {};
+      try {
+        const parsed = JSON.parse(firstLine);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) first = parsed;
+      } catch {
+        // La metadata puede faltar en chats antiguos o incompletos.
+      }
+      const sessionId = first.sessionId ? String(first.sessionId) : basename(path, ".jsonl");
+      const cwd = typeof first.cwd === "string" ? first.cwd : "";
+      return { sessionId, project: cwd ? basename(cwd) || "qwen" : "qwen" };
+    },
+    parseLines: (raw) => ({ events: [], lineCount: raw ? raw.split("\n").length - (raw.endsWith("\n") ? 1 : 0) : 0, skipped: 0 }),
+    parseSkills: (raw, fromLine) => parseQwenSkills(raw, fromLine),
+    skillsOnly: true,
   };
 }
 
@@ -152,7 +178,7 @@ export function getIngestAdapters(roots: { claudeRoot?: string; codexRoot?: stri
   if (codexRoot) adapters.push(codexAdapter(codexRoot));
 
   const qwenRoot = roots.qwenRoot ?? (roots.claudeRoot ? undefined : defaultQwenRoot());
-  if (qwenRoot) adapters.push(qwenAdapter(qwenRoot));
+  if (qwenRoot) adapters.push(qwenAdapter(qwenRoot), qwenChatsAdapter(qwenRoot));
 
   const zcodeRoot = roots.zcodeRoot ?? (roots.claudeRoot ? undefined : defaultZcodeRoot());
   if (zcodeRoot) adapters.push(zcodeAdapter(zcodeRoot));

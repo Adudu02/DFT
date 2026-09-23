@@ -79,7 +79,7 @@ async function ingestFile(
     for (const su of skillUsages) {
       if (insertSkill.run(su.skill, sessionId, su.ts, su.kind).changes > 0) skillsInserted++;
     }
-    for (const { dedupKey, event } of events) {
+    for (const { dedupKey, event } of adapter.skillsOnly ? [] : events) {
       const rate = getRate(pricing, event.model, unknown);
       const cost = costForEvent(event, rate);
       // Para adapters multiSession (Qwen), cada event tiene su propio sessionId.
@@ -102,7 +102,7 @@ async function ingestFile(
 
     // Recalcula agregados de la sesion desde la DB (idempotente).
     // Para adapters multiSession (Qwen), upsertamos una entrada por cada sessionId único.
-    const sessionIdsToUpsert = adapter.multiSession
+    const sessionIdsToUpsert = adapter.skillsOnly ? [] : adapter.multiSession
       ? [...new Set(events.map((e) => e.event.sessionId))]
       : [sessionId];
 
@@ -197,5 +197,4 @@ export async function ingestAll(
     unparseableLines,
   };
 }
-
 
