@@ -10,7 +10,12 @@ data/reports/
 data/unknown-models.json
 data/pricing.json
 data/config.json
+data/quota-cache.json
 *.log
+
+# configs locales de agentes de IA (no versionar)
+.agents/
+.qwen/
 
 # editor y material de diseño local (no versionar)
 .vscode/
@@ -24,3 +29,7 @@ docs-onboarding.html
 
 # Reportes de cobertura (artefactos locales)
 coverage/
+
+# Artefactos generados del diagrama de arquitectura (la fuente .architecture.json sí se versiona)
+docs/dft-architecture.html
+docs/dft-architecture.visual-check.*
