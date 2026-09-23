@@ -1,4 +1,4 @@
-# Motor Agéntico · v1.0.0
+# How much U wasted? · v0.0.1
 
 [![CI](https://github.com/Adudu02/DFT/actions/workflows/ci.yml/badge.svg)](https://github.com/Adudu02/DFT/actions/workflows/ci.yml)
 
