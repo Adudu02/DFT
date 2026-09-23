@@ -65,6 +65,9 @@ never rewrites the source transcripts.
 
 ## Try it (no clone needed)
 
+> **Note:** the npm package is not on the registry yet — the first publish is
+> pending. Until it lands, use the quick start below.
+
 ```bash
 npx how-much-did-u-waste
 ```
