@@ -7,22 +7,38 @@ import { Loading } from "../components/Loading.js";
 import { ErrorMsg } from "../components/ErrorMsg.js";
 import { Empty } from "../components/Empty.js";
 
+// Hora | Prompt | Modelo · esfuerzo | In | Out | Costo. En móvil el prompt ocupa su propia fila.
+const TURN_GRID =
+  "grid grid-cols-[3rem_1fr_3.5rem_3.5rem_3.5rem] sm:grid-cols-[3rem_minmax(0,1fr)_9rem_3.5rem_3.5rem_3.5rem] gap-x-2 items-baseline";
+
 function PromptRow({ t }: { t: SessionTurn }) {
   const [open, setOpen] = useState(false);
+  // Tolera respuestas de un servidor anterior sin el desglose (models/in/out ausentes).
+  const models = t.models ?? [];
+  const [model, ...rest] = models;
+  const input = t.inputTokens ?? t.tokens;
   return (
     <button type="button"
       onClick={() => setOpen((o) => !o)}
       aria-expanded={open}
-      className="w-full text-left flex gap-2 items-baseline min-w-0 rounded-md px-1 -mx-1 hover:bg-term-bg focus:outline-none focus:ring-1 focus:ring-term-amber"
+      className={`${TURN_GRID} w-full text-left min-w-0 rounded-md px-1 -mx-1 py-0.5 hover:bg-term-bg focus:outline-none focus:ring-1 focus:ring-term-amber`}
     >
-      <span className="text-term-green font-mono flex-none" title={t.ts}>
+      <span className="text-term-green font-mono" title={t.ts}>
         {t.time}
       </span>
-      <span className={`flex-1 min-w-0 text-term-muted ${open ? "whitespace-pre-wrap break-words" : "truncate"}`}>
+      <span className={`col-span-5 sm:col-span-1 order-last sm:order-none min-w-0 text-term-muted ${open ? "whitespace-pre-wrap break-words" : "truncate"}`}>
         {t.prompt}
       </span>
-      <span className="flex-none text-term-muted">{compact(t.tokens)}</span>
-      <span className="flex-none text-term-amber w-14 text-right">{usd(t.costUsd)}</span>
+      <span className="min-w-0 truncate" title={[models.join(", "), t.effort && `esfuerzo: ${t.effort}`].filter(Boolean).join(" · ")}>
+        {model ?? "—"}
+        {rest.length > 0 && <span className="text-term-muted"> +{rest.length}</span>}
+        {t.effort && <span className="block text-term-muted">{t.effort}</span>}
+      </span>
+      <span className="text-right" title={t.cacheTokens == null ? undefined : `caché ${compact(t.cacheTokens)} de ${compact(input)}`}>
+        {compact(input)}
+      </span>
+      <span className="text-right">{t.outputTokens == null ? "—" : compact(t.outputTokens)}</span>
+      <span className="text-term-amber text-right">{usd(t.costUsd)}</span>
     </button>
   );
 }
@@ -52,8 +68,13 @@ function SessionDrill({ id }: { id: string }) {
 
       {turns && turns.length > 0 && (
         <div className="mt-3 border-t border-term-border/50 pt-2">
-          <div className="text-term-muted uppercase tracking-widest mb-1" style={{ fontSize: 10 }}>
-            Prompts ({turns.length}) · hora · costo
+          <div className={`${TURN_GRID} text-term-muted uppercase tracking-widest mb-1 px-1 -mx-1`} style={{ fontSize: 10 }}>
+            <span>Hora</span>
+            <span className="hidden sm:block">Prompts ({turns.length})</span>
+            <span>Modelo</span>
+            <span className="text-right">In</span>
+            <span className="text-right">Out</span>
+            <span className="text-right">Costo</span>
           </div>
           <div className="grid gap-1 min-w-0">
             {turns.map((t, i) => (

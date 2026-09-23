@@ -144,6 +144,15 @@ describe("getSessionTurns — parsing real de prompts", () => {
     expect(turns[1].costUsd).toBeCloseTo(2.0, 6); // 2M input haiku @ $1/M = $2
   });
 
+  it("desglosa tokens in/out, modelo y esfuerzo por turno", async () => {
+    const turns = (await getSessionTurns(db2, "prompts", "UTC"))!;
+    expect(turns[0]).toMatchObject({ inputTokens: 1_000_000, cacheTokens: 0, outputTokens: 0, tokens: 1_000_000 });
+    expect(turns[0].models).toEqual(["claude-opus-4-8"]);
+    expect(turns[0].effort).toBe("high");
+    expect(turns[1].models).toEqual(["claude-haiku-4-5"]);
+    expect(turns[1].effort).toBe("high"); // sin marca en su turno => hereda la última vista
+  });
+
   it("busca prompts sin persistirlos", async () => {
     const tables = (db2.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((t) => t.name);
     expect(tables.some((t) => /prompt/i.test(t))).toBe(false);
@@ -186,6 +195,12 @@ describe("getSessionTurns — Codex formato actual (response_item)", () => {
       "por qué falla el deploy en staging",
       "formato legado: revisa los logs",
     ]);
+  });
+
+  it("lee el esfuerzo de turn_context", async () => {
+    const turns = (await getSessionTurns(dbC, "cx", "UTC"))!;
+    // cada turn_context precede al prompt al que aplica
+    expect(turns.map((t) => t.effort)).toEqual(["high", "low"]);
   });
 
   it("searchPrompts encuentra texto del formato actual", async () => {

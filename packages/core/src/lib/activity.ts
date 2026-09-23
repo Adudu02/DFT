@@ -234,6 +234,11 @@ export interface SessionTurn {
   prompt: string;
   costUsd: number; // costo de los turnos del agente hasta el siguiente prompt
   tokens: number;
+  inputTokens: number; // entrada total (incluye caché escrita + leída)
+  cacheTokens: number; // parte de inputTokens que fue caché (escritura + lectura)
+  outputTokens: number;
+  models: string[]; // modelos que respondieron el turno, por costo desc
+  effort: string | null; // nivel de razonamiento si el transcript lo registra (Claude Code, Codex)
 }
 
 /** HH:MM en `timeZone` (vacío = zona del sistema). Zona inválida => cae a UTC. */
@@ -326,6 +331,75 @@ function extractPrompts(raw: string): { ts: string; prompt: string }[] {
   return out;
 }
 
+/**
+ * Marcas de esfuerzo en el transcript. Claude Code lo pone en cada línea
+ * assistant (`effort`, *después* del prompt); Codex en `turn_context`, que se
+ * escribe justo *antes* del mensaje del usuario (y a veces a mitad del turno).
+ */
+interface EffortMark {
+  ts: string;
+  effort: string;
+  before: boolean; // true = precede al prompt al que aplica (Codex)
+}
+
+function extractEfforts(raw: string): EffortMark[] {
+  const out: EffortMark[] = [];
+  for (const line of raw.split("\n")) {
+    if (!line.includes('"effort"')) continue; // evita parsear JSON sin marca
+    let o: any;
+    try {
+      o = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const before = o.type === "turn_context";
+    const effort = before ? o.payload?.effort : o.type === "assistant" ? o.effort : undefined;
+    if (typeof effort === "string" && effort) out.push({ ts: String(o.timestamp ?? ""), effort, before });
+  }
+  return out;
+}
+
+/**
+ * Esfuerzo del turno [from, to): Codex => última marca previa al prompt;
+ * Claude => primera marca dentro del turno; si no hay, la última vista.
+ */
+function effortFor(marks: EffortMark[], from: string, to: string): string | null {
+  const pre = marks.filter((m) => m.before && m.ts <= from).at(-1);
+  if (pre) return pre.effort;
+  const inside = marks.find((m) => !m.before && m.ts >= from && m.ts < to);
+  if (inside) return inside.effort;
+  return marks.filter((m) => m.ts < from).at(-1)?.effort ?? null;
+}
+
+interface TurnEvent {
+  ts: string;
+  model: string;
+  costUsd: number;
+  input: number;
+  cache: number;
+  output: number;
+}
+
+/** Suma eventos de un turno: tokens separados y modelos ordenados por costo. */
+function sumTurn(events: TurnEvent[]) {
+  const byModel = new Map<string, number>();
+  let costUsd = 0, input = 0, cache = 0, output = 0;
+  for (const e of events) {
+    costUsd += e.costUsd;
+    input += e.input;
+    cache += e.cache;
+    output += e.output;
+    byModel.set(e.model, (byModel.get(e.model) ?? 0) + e.costUsd);
+  }
+  const models = [...byModel].sort((a, b) => b[1] - a[1]).map(([m]) => m);
+  return { costUsd, tokens: input + output, inputTokens: input, cacheTokens: cache, outputTokens: output, models };
+}
+
+const TURN_EVENT_COLS = `ts, model, cost_usd AS costUsd,
+  input_tokens + cache_write_tokens + cache_read_tokens AS input,
+  cache_write_tokens + cache_read_tokens AS cache,
+  output_tokens AS output`;
+
 /** Fuentes que no son transcripts JSONL (p.ej. el opencode.db de OpenCode). */
 function isBinarySource(path: string): boolean {
   return /\.(db|sqlite|sqlite3)$/i.test(path);
@@ -414,20 +488,24 @@ export async function getSessionTurns(
   if (isBinarySource(row.path)) {
     const prompts = (await opencodePrompts(row.path, [id])).get(id) ?? [];
     if (prompts.length === 0) return [];
-    const totals = db
-      .prepare(
-        `SELECT COALESCE(SUM(cost_usd), 0) AS cost,
-                COALESCE(SUM(input_tokens + output_tokens + cache_write_tokens + cache_read_tokens), 0) AS tokens
-         FROM usage_events WHERE session_id = ?`,
-      )
-      .get(id) as { cost: number; tokens: number };
-    const costs = evenSplit(totals.cost, prompts.length, 1e6);
-    const tokens = evenSplit(totals.tokens, prompts.length, 1);
+    const all = sumTurn(
+      db.prepare(`SELECT ${TURN_EVENT_COLS} FROM usage_events WHERE session_id = ?`).all(id) as TurnEvent[],
+    );
+    const n = prompts.length;
+    const costs = evenSplit(all.costUsd, n, 1e6);
+    const inputs = evenSplit(all.inputTokens, n, 1);
+    const caches = evenSplit(all.cacheTokens, n, 1);
+    const outputs = evenSplit(all.outputTokens, n, 1);
     return prompts.map((prompt, i) => ({
       ...prompt,
       time: hhmm(prompt.ts, timeZone),
       costUsd: costs[i],
-      tokens: tokens[i],
+      tokens: inputs[i] + outputs[i],
+      inputTokens: inputs[i],
+      cacheTokens: caches[i],
+      outputTokens: outputs[i],
+      models: all.models, // OpenCode no registra por turno: modelos de la sesión
+      effort: null,
     }));
   }
 
@@ -442,19 +520,19 @@ export async function getSessionTurns(
   if (prompts.length === 0) return [];
 
   const events = db
-    .prepare("SELECT ts, cost_usd AS costUsd, input_tokens + output_tokens + cache_write_tokens + cache_read_tokens AS tokens FROM usage_events WHERE session_id = ? ORDER BY ts")
-    .all(id) as { ts: string; costUsd: number; tokens: number }[];
+    .prepare(`SELECT ${TURN_EVENT_COLS} FROM usage_events WHERE session_id = ? ORDER BY ts`)
+    .all(id) as TurnEvent[];
+  const efforts = extractEfforts(raw);
 
   // Cada evento se atribuye al último prompt anterior a él.
   return prompts.map((p, i) => {
-    const next = prompts[i + 1]?.ts ?? "￿";
-    const mine = events.filter((e) => e.ts >= p.ts && e.ts < next);
+    const next = prompts[i + 1]?.ts ?? "\uffff";
     return {
       ts: p.ts,
       time: hhmm(p.ts, timeZone),
       prompt: p.prompt,
-      costUsd: mine.reduce((n, e) => n + e.costUsd, 0),
-      tokens: mine.reduce((n, e) => n + e.tokens, 0),
+      ...sumTurn(events.filter((e) => e.ts >= p.ts && e.ts < next)),
+      effort: effortFor(efforts, p.ts, next),
     };
   });
 }

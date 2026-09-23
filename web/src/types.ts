@@ -109,6 +109,11 @@ export interface SessionTurn {
   prompt: string;
   costUsd: number;
   tokens: number;
+  inputTokens: number;
+  cacheTokens: number;
+  outputTokens: number;
+  models: string[];
+  effort: string | null;
 }
 
 export interface WasteThresholds {
