@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { RefreshControl } from "./components/RefreshControl.js";
+import { AgentLogos } from "./components/AgentLogos.js";
 import { ErrorBoundary } from "./components/ErrorBoundary.js";
 import { Loading } from "./components/Loading.js";
 import { Icon, type IconName } from "./components/Icon.js";
@@ -64,7 +65,8 @@ export default function App() {
       <aside className="hidden md:flex md:w-[232px] md:flex-none md:flex-col md:gap-6 md:border-r md:border-term-border md:bg-term-panel md:px-4 md:py-5 md:sticky md:top-0 md:h-screen">
         <Brand />
         <NavItems className="flex flex-col gap-1" />
-        <div className="mt-auto border-t border-term-border pt-4">
+        <div className="mt-auto flex flex-col gap-4 border-t border-term-border pt-4">
+          <AgentLogos />
           <RefreshControl />
         </div>
       </aside>
